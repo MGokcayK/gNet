@@ -43,7 +43,7 @@ class MNIST_Downloader():
         x_test, y_test = mnist.load_test()
         
         #if normalized 
-        # x_train, x_test = x_train / 255.0, x_test / 255.0
+        #x_train, x_test = x_train / 255.0, x_test / 255.0
         ...
     """
     def __init__(self):
