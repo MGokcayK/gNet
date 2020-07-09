@@ -23,7 +23,8 @@ depends on author learning process.
 
 Installation can be done with pip or clone the git and use in local file of your workspace.
 
-To install with [pip][https://pypi.org]
+To install with [pip](https://pypi.org).
+
 ```bash
 pip install gNet
 ```
