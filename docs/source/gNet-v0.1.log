@@ -1,4 +1,4 @@
-This is LuaHBTeX, Version 1.12.0 (MiKTeX 2.9.7420 64-bit)  (format=lualatex 2020.5.20)  8 JUL 2020 20:57
+This is LuaHBTeX, Version 1.12.0 (MiKTeX 2.9.7420 64-bit)  (format=lualatex 2020.5.20)  9 JUL 2020 16:48
  restricted system commands enabled.
 **gNet-v0.1.tex
 (./gNet-v0.1.tex
@@ -812,22 +812,27 @@ warning  (pdf backend): ignoring duplicate destination with the name 'page.1'
 \openout5 = gNet-v0.1.toc
  [2]
 Chapter 1.
-[3
+("C:/Program Files/MiKTeX 2.9/tex/latex/listings/lstlang1.sty"
+File: lstlang1.sty 2020/03/24 1.8d listings language file
+)
+("C:/Program Files/MiKTeX 2.9/tex/latex/listings/lstlang1.sty"
+File: lstlang1.sty 2020/03/24 1.8d listings language file
+)
+Package hyperref Info: bookmark level for unknown lstlisting defaults to 0 on in
+put line 149.
+ [3
 
 ]
 Chapter 2.
 ("C:/Program Files/MiKTeX 2.9/tex/latex/listings/lstlang1.sty"
 File: lstlang1.sty 2020/03/24 1.8d listings language file
-)
-Package hyperref Info: bookmark level for unknown lstlisting defaults to 0 on in
-put line 161.
- [4
+) [4
 
 ] [5]
 [6] [7] [8] [9] [10] [11] [12] [13] [14] [15]
 Chapter 3.
 
-Overfull \hbox (23.06035pt too wide) in paragraph at lines 628--628
+Overfull \hbox (23.06035pt too wide) in paragraph at lines 634--634
 |[]\TU/lmr/bx/n/24.88 ten-sor, ten-sor_ops mod-
  []
 
@@ -838,7 +843,7 @@ Chapter 4.
 [21
 
 ] [22]
-Overfull \hbox (0.60362pt too wide) in paragraph at lines 825--826
+Overfull \hbox (0.60362pt too wide) in paragraph at lines 831--832
 [] [][] \TU/lmr/m/n/12 An-other notes about val-i-da-tion is when run-ning ‘tr
 ain_one_batch‘ with ‘val_rate‘,
  []
@@ -856,7 +861,7 @@ Chapter 7.
 [30
 
 ] [31] [32] [33] [34] [35] [36]
-Overfull \hbox (2.23961pt too wide) in paragraph at lines 1257--1258
+Overfull \hbox (2.23961pt too wide) in paragraph at lines 1263--1264
 [] [][] \TU/lmr/m/n/12 Two train-able pa-ram-e-ters and two run-ning pa-ram-e-te
 rs have each ini-tial-izer method.
  []
@@ -868,7 +873,7 @@ Chapter 8.
 ] [40] [41]
 Chapter 9.
 
-Overfull \hbox (47.592pt too wide) in paragraph at lines 1368--1368
+Overfull \hbox (47.592pt too wide) in paragraph at lines 1374--1374
 |[]\TU/lmr/bx/n/24.88 ac-ti-va-tion_func-tions mod-
  []
 
@@ -889,37 +894,37 @@ Chapter 12.
 ] [52]
 Chapter 13.
 
-Overfull \hbox (17.18863pt too wide) in paragraph at lines 1724--1724
+Overfull \hbox (17.18863pt too wide) in paragraph at lines 1730--1730
 |[]\TU/lmr/bx/n/24.88 conv_utils mod-ule and
  []
 
 (./gNet-v0.1.bbl [53
 
 ])
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 1741.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 1747.
  [54
 
 ]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 1741.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 1747.
  (./gNet-v0.1.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 1741.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 1741.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 1747.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 1747.
 Package rerunfilecheck Info: File `gNet-v0.1.out' has not changed.
-(rerunfilecheck)             Checksum: E6E59C81ED19B325293AE2EEDA10F568;9336.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 1741.
+(rerunfilecheck)             Checksum: 39FC46A82DF427A882A8EF85CD17D736;9452.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 1747.
 )
 
 Here is how much of LuaTeX's memory you used:
- 17786 strings out of 480887
+ 17882 strings out of 480887
  244191,953878 words of node,token memory allocated
  565 words of node memory still in use:
    6 hlist, 2 vlist, 2 rule, 3 glue, 4 kern, 1 glyph, 8 attribute, 64 glue_spec,
  8 attribute_list, 1 write, 1 pdf_action nodes
-   avail lists: 1:1,2:4511,3:157,4:3339,5:3151,6:51,7:10487,8:50,9:9382,10:51,11
-:564
- 34026 multiletter control sequences out of 65536+200000
+   avail lists: 2:4511,3:157,4:3339,5:3151,6:51,7:10487,8:50,9:9382,10:51,11:564
+
+ 34101 multiletter control sequences out of 65536+200000
  82 fonts using 7725915 bytes
- 45i,6n,50p,921b,889s stack positions out of 5000i,500n,10000p,200000b,50000s
+ 45i,6n,60p,921b,889s stack positions out of 5000i,500n,10000p,200000b,50000s
 <//?/c:/program files/miktex 2.9/fonts/opentype/public/lm/lmroman12-italic.otf><
 //?/c:/program files/miktex 2.9/fonts/opentype/public/lm/lmroman10-bolditalic.ot
 f><//?/c:/program files/miktex 2.9/fonts/opentype/public/lm/lmroman8-regular.otf
@@ -933,9 +938,9 @@ iles/MiKTeX 2.9/fonts/type1/public/amsfonts/cm/cmmi8.pfb><C:/Program Files/MiKTe
 X 2.9/fonts/type1/public/amsfonts/cm/cmr12.pfb><C:/Program Files/MiKTeX 2.9/font
 s/type1/public/amsfonts/cm/cmr8.pfb><C:/Program Files/MiKTeX 2.9/fonts/type1/pub
 lic/amsfonts/cm/cmsy10.pfb>
-Output written on gNet-v0.1.pdf (55 pages, 345839 bytes).
+Output written on gNet-v0.1.pdf (55 pages, 347058 bytes).
 
-PDF statistics: 1325 PDF objects out of 1440 (max. 8388607)
- 783 named destinations out of 1000 (max. 131072)
- 390 words of extra memory for PDF output out of 10000 (max. 100000000)
+PDF statistics: 1332 PDF objects out of 1440 (max. 8388607)
+ 786 named destinations out of 1000 (max. 131072)
+ 398 words of extra memory for PDF output out of 10000 (max. 100000000)
 

@@ -19,6 +19,14 @@ gNet has not a lot functions and methods for now, because subject is written whe
 they needed to learn. Also, gNet is personal project. Thus, its development process
 depends on author learning process.
 
+## Installation
+
+Installation can be done with pip or clone the git and use in local file of your workspace.
+
+To install with [pip][https://pypi.org]
+```bash
+pip install gNet
+```
 
 ## Example - MNIST
 

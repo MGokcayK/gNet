@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="gNet", 
-    version="0.1.0",
+    version="0.1.1",
     author="Mehmet Gökçay Kabataş",
     author_email="mgokcaykdev@gmail.com",
     description="A mini Deep Learning Library",

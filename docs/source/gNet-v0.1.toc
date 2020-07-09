@@ -2,6 +2,7 @@
 \contentsline {paragraph}{}{3}{chapter.1}%
 \contentsline {paragraph}{}{3}{chapter.1}%
 \contentsline {paragraph}{}{3}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Installation}{3}{section.1.1}%
 \contentsline {chapter}{\numberline {2}Usage with Examples}{4}{chapter.2}%
 \contentsline {paragraph}{}{4}{chapter.2}%
 \contentsline {section}{\numberline {2.1}How calculate gradient?}{4}{section.2.1}%
