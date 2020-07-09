@@ -75,6 +75,7 @@ Result will be like :
 
 Model created and initializing parameters..
 
+```
 +--------------------+--------------+-----------------+
 |       Layer        | Output Shape | # of Parameters |
 +====================+==============+=================+
@@ -102,7 +103,10 @@ Epoch : 10 / 10   100.00 %  Loss : 0.0164  Accuracy : 0.9949
 Passed Training Time :  0:01:04.485637
 Test Loss : 0.0969, Accuracy : 0.9747
 Passed Evaluate Time :  0:00:00.140604
-
+```
 ## Details
 
 Details can be found in [mini docs](../master/docs/gNet-v0.1.pdf).
+
+## License
+[MIT](https://choosealicense.com/licenses/mit/)
