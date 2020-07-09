@@ -74,6 +74,7 @@ net.get_accuracy_plot(show=True)
 Result will be like :
 
 Model created and initializing parameters..
+
 +--------------------+--------------+-----------------+
 |       Layer        | Output Shape | # of Parameters |
 +====================+==============+=================+
@@ -85,7 +86,9 @@ Model created and initializing parameters..
 +--------------------+--------------+-----------------+
 | Total              |              | 101,770         |
 +--------------------+--------------+-----------------+
+
 Train starting..
+
 Epoch : 1 / 10   100.00 %  Loss : 0.2640  Accuracy : 0.9241
 Epoch : 2 / 10   100.00 %  Loss : 0.1164  Accuracy : 0.9657
 Epoch : 3 / 10   100.00 %  Loss : 0.0802  Accuracy : 0.9761
@@ -102,4 +105,4 @@ Passed Evaluate Time :  0:00:00.140604
 
 ## Details
 
-Details can be found in [mini docs](../blob/master/docs/gNet-v0.1.pdf).
+Details can be found in [mini docs](../master/docs/gNet-v0.1.pdf).
