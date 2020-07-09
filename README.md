@@ -2,11 +2,11 @@
 
 gNet is a mini Deep Learning(DL) library. It is written to understand how DL
 works. It is running on CPU. It is written on Python language and used :
-    • Numpy for linear algebra calculations
-    • Matplotlib for plottings
-    • Texttable for proper printing of model summary in cmd
-    • wget for download MNIST data
-    • idx2numpy for load MNIST data
+    - Numpy for linear algebra calculations
+    - Matplotlib for plottings
+    - Texttable for proper printing of model summary in cmd
+    - wget for download MNIST data
+    - idx2numpy for load MNIST data
 some 3rd party libraries.
 
 During devolopment, Tensorflow, Keras, Pytorch and some other libraries examined.
