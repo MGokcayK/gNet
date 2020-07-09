@@ -72,10 +72,9 @@ net.get_accuracy_plot(show=True)
 ```
 
 Result will be like :
-
+```
 Model created and initializing parameters..
 
-```
 +--------------------+--------------+-----------------+
 |       Layer        | Output Shape | # of Parameters |
 +====================+==============+=================+
