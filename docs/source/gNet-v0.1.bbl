@@ -1,0 +1,30 @@
+\begin{thebibliography}{4}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Grus(2019)]{Joel_Grus}
+J.~Grus.
+\newblock Autograd, 2019.
+\newblock URL \url{https://github.com/joelgrus/autograd}.
+
+\bibitem[Li(2020)]{cs231}
+F.-F. Li.
+\newblock Cs231n: Convolutional neural networks for visual recognition lecture
+  notes, 2020.
+\newblock URL \url{https://cs231n.github.io}.
+
+\bibitem[Savine(2018)]{AD_savine}
+A.~Savine.
+\newblock \emph{Modern Computational Finance: AAD and Parallel Simulations}.
+\newblock Wiley Publishing, 1st edition, 2018.
+\newblock ISBN 1119539455.
+
+\bibitem[Yann et~al.(1998)Yann, Leon, Yoshua, and Patrick]{MNIST}
+L.~Yann, B.~Leon, B.~Yoshua, and H.~Patrick.
+\newblock The mnist dataset, 1998.
+\newblock URL \url{http://yann.lecun.com/exdb/mnist/}.
+
+\end{thebibliography}
