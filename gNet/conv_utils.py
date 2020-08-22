@@ -36,3 +36,9 @@ def get_im2col_indices(X_shape, kernel, stride, padding):
     k = np.repeat(np.arange(C), HH * WW).reshape(-1, 1)
 
     return (k.astype(int), i.astype(int), j.astype(int))
+
+def get_conv1D_indices(kernel, stride, output):
+    i0 = np.arange(kernel)
+    i1 = stride * np.arange(output)   
+    i = i1.reshape(-1, 1) + i0.reshape(1, -1)
+    return i

@@ -16,8 +16,8 @@
 
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
-    Update : 08 / 07 / 2020
-                Add some assert for end-user.
+    Update : 22 / 08 / 2020
+                Conv1D added.
 """
 
 # import required modules
@@ -1040,3 +1040,177 @@ class BatchNormalization(Layer):
             _res += self._beta_regularizer.compute(self._trainable[1])
         return _res
 
+
+
+class Conv1D(Layer):
+    """
+        Conv1D layer implementation. Conv2D implementation done by myself. 
+        Results compared with Tensorflows' `tf.nn.conv1D` operation. Same input and
+        kernel (difference is channel order) gives equal output with corresponding
+        channel order.
+
+        Note:
+        -----
+        gNet use `channel first` approach. Therefore, make sure that your data have `channel first` shape.
+
+        Arguments for initialization :
+        ------------------------------
+
+        filter              : Number of filter.
+            >>> type        : int
+            >>> Default     : 1
+
+        kernel              : Size of kernel (Width). It should declared seperately.
+            >>> type        : int
+            >>> Default     : 1
+
+        stride              : Stride of kernel (Height, Width). It should declared seperately.
+            >>> type        : int
+            >>> Default     : 1
+
+        padding             : How many padding of input. Integer should give declare number of 
+                            padding constant. 
+            >>> type        : int                            
+            >>> Default     : 0
+
+        initialize_method   : Layer initialization method.
+            >>> type        : str or custom initializer class
+            >>> Default     : 'xavier_uniform'
+
+        bias_initializer    : Layer's bias's initialization method.
+            >>> type        : str or custom initializer class
+            >>> Default     : 'zeros_init'
+
+        kernel_regularizer  : Regularizer method of kernels of layer.
+            >>> type        : regularizer class
+            >>> Default     
+
+        bias_regularizer    : Regularizer method of biases of layer.
+            >>> type        : regularizer class
+            >>> Default     : None
+
+        bias                : Bool of using bias during calculation.
+            >>> type        : bool
+            >>> Default     : True
+
+        input_shape         : If Conv1D is first layer of model, input_shape should be declared.
+                            Shape will be in form of [batch_size, channel, width].
+            >>> type        : bool
+            >>> Default     : None
+
+        Arguments for compute method is tensor of previous method in proper size.
+
+        Its compute method calculation based on flatten local space of input and kernels then 
+        stored as 2D array. After making 2D array, by using dot product, calculation of all 
+        convolution can be done. Then, reshaping result to proper size. 
+    """
+    def __init__(self,
+                filter = 1,
+                kernel = 1,
+                stride = 1,
+                padding = 0,
+                initialize_method = 'xavier_uniform',
+                bias_initializer = 'zeros_init',
+                kernel_regularizer = None,
+                bias_regularizer = None,
+                use_bias = True,
+                input_shape = None,
+                **kwargs):
+        super(Conv1D, self).__init__(**kwargs)
+        self._input_shape = input_shape
+        self._filter = filter
+        self._K = kernel
+        self._stride = stride
+        self._padding = padding
+        self._bias = use_bias
+        self._initialize_method = initialize_method
+        self._bias_initialize_method = bias_initializer
+        self._set_initializer()
+        self._kernel_regularizer = kernel_regularizer
+        self._bias_regularizer = bias_regularizer
+
+    def __call__(self, params) -> None:
+        '''
+            Update of some of model parameters and class parameters.
+        '''
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('Conv1D')
+        params['activation'].append('none')
+        params['#parameters'].append(self._filter * self._K + self._filter)
+
+        # If Conv1D layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            assert len(self._input_shape) == 2, 'Make sure that input of Conv1D has 2 dimension without batch such as (1,28).'
+            # get channel, width and height of data
+            self._C, self._W = self._input_shape
+        else:
+            # Conv1D layer is not first layer. So get channel and width 
+            # of data from previous layer output shape
+            assert self._thisLayer != 0, 'First layer of Conv1D should have input_shape!'
+            self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
+
+        # output dimension
+        self._O =  int((self._W - self._K + 2 * self._padding) / self._stride + 1)
+        
+        self._output_shape = (self._filter, self._O)
+
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add flattened layer neuron number to model params
+        params['model_neuron'].append(self._filter)
+
+        self._init_trainable(params)
+
+    def _init_trainable(self, params):
+        '''
+            Initialization of Conv1D layer's trainable variables.
+        '''
+        # create kernel and bias
+        _k_shape = (self._filter, self._C, self._K)
+        _b_shape = (self._filter, 1)
+        _K, _b = self._get_inits(_k_shape, _b_shape)
+        # make kernels as  tensor
+        _K = T.Tensor(_K, have_grad=True)
+        # make biases as tensor
+        _b = T.Tensor(_b, have_grad=True)
+        # add them to trainable list
+        self._trainable.append(_K)
+        self._trainable.append(_b)
+
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of Conv1D layer.
+        '''
+        # getting input shapes separately
+        N, C, W = inputs.shape
+        # padding 
+        if self._padding != 0:
+            inputs.value = np.pad(inputs.value, ((0,0),(self._padding, self._padding),(0,0)), mode='constant', constant_values=0)
+
+        # location of local space
+        i = conv_util.get_conv1D_indices(self._K, self._stride, self._O)
+        # get local spaces of inputs
+        value = inputs[:, :, i].value
+        # flat the local spaces
+        value = value.transpose(1,3,2,0).reshape(self._K * self._C , -1)
+        # dot product of kernels and local spaces
+        inputs = T.dot(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value))
+        # adding if use_bias is true
+        if self._bias:
+            inputs.value += self._trainable[1].value
+        # reshape dot product to output shape
+        inputs = T.reshape(inputs, (self._filter, self._O, N))
+        # arrange dimensions
+        inputs = T.transpose(inputs, (2, 0, 1))
+        return inputs
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer.
+        """
+        _res = T.Tensor(0.)
+        if self._kernel_regularizer:
+            _res += self._kernel_regularizer.compute(self._trainable[0])
+        if self._bias_regularizer:
+            _res += self._bias_regularizer.compute(self._trainable[1])
+        return _res
