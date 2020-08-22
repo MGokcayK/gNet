@@ -1,5 +1,5 @@
 """
-    Laywer module of gNet.
+    Layer module of gNet.
 
     Containing layers : \n
         - Dense

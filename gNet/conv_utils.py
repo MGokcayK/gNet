@@ -6,8 +6,8 @@
 
     Author : @MGokcayK 
     Create : 30 / 04 / 2020
-    Update : 03 / 07 / 2020
-                Add descriptions.
+    Update : 22 / 08 / 2020
+                Add get_conv1D_indices.
 """
 
 import numpy as np
