@@ -47,8 +47,8 @@
 
     Author : @MGokcayK github.com/MGokcayK
     Create : 24 / 03 / 2020
-    Update : 25 / 06 / 2020
-                Adding arcs of trigonometric functions and abs function and dropout ops.
+    Update : 24 / 08 / 2020
+                Edit dtype to float32.
 """
 
 
@@ -75,7 +75,7 @@ def make_array (arrayable: arrayableTypes) -> np.ndarray:
     if isinstance(arrayable, np.ndarray):
         return arrayable
     else:
-        return np.array(arrayable)
+        return np.array(arrayable, dtype=np.float32)
 
 # Tensorable types declared
 Tensorable = Union['Tensor', float, int, np.ndarray]
@@ -270,7 +270,7 @@ class Tensor:
         '''
             If tensor have gradient, make it zero as initial value.
         '''
-        self.grad = make_tensor(np.zeros_like(self._value, dtype=np.float64))
+        self.grad = make_tensor(np.zeros_like(self._value, dtype=np.float32))
 
 
     def one_grad(self) -> None:

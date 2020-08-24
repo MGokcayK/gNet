@@ -1,3 +1,12 @@
+"""
+    Tensor operations implementations.
+
+    Author : @MGokcayK github.com/MGokcayK
+    Create : 24 / 03 / 2020
+    Update : 24 / 08 / 2020
+                Edit dtype to float32.
+"""
+
 import numpy as np
 from gNet import tensor as T
 
@@ -7,7 +16,7 @@ def add(t1: 'Tensor', t2:'Tensor') -> 'Tensor':
         Addition of two `Tensor`. Also it is calculate its gradient of operation 
         if one of tensor have_grad = True.
     '''
-    value = t1._value + t2._value
+    value = np.add(t1._value, t2._value, dtype=np.float32)
     have_grad = t1.have_grad or t2.have_grad
     ops_name = '_add'
     depends_on: List[Dependency] = []
@@ -18,12 +27,12 @@ def add(t1: 'Tensor', t2:'Tensor') -> 'Tensor':
             # to handle broadcast, add dimension
             ndims_added = grad.ndim - t1._value.ndim
             for _ in range(ndims_added):
-                grad = grad.sum(axis=0)
+                grad = grad.sum(axis=0, dtype=np.float32)
 
             # Sum across broadcasted (but non-added dims)
             for i, dim in enumerate(t1.shape):
                 if dim == 1:
-                    grad = grad.sum(axis=i, keepdims=True)
+                    grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
 
             return grad
         
@@ -35,11 +44,11 @@ def add(t1: 'Tensor', t2:'Tensor') -> 'Tensor':
             # to handle broadcast, add dimension
             ndims_added = grad.ndim - t2._value.ndim
             for _ in range(ndims_added):
-                grad = grad.sum(axis=0)
+                grad = grad.sum(axis=0, dtype=np.float32)
 
             for i, dim in enumerate(t2.shape):
                 if dim == 1:
-                    grad = grad.sum(axis=i, keepdims=True)
+                    grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
 
             return grad
         
@@ -58,7 +67,7 @@ def tensor_sum(t: 'Tensor', axis=0, keepdim=False) -> 'Tensor':
 
         Default axis is 0.
     '''
-    value = np.sum(t.value, axis=axis, keepdims=keepdim)
+    value = np.sum(t.value, axis=axis, keepdims=keepdim, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_tensor_sum'
 
@@ -70,7 +79,7 @@ def tensor_sum(t: 'Tensor', axis=0, keepdim=False) -> 'Tensor':
                 Gradient should be 0-tensor. So each element has that much
                 gradient.
             '''
-            return grad * np.ones_like(t._value)
+            return grad.astype(np.float32) * np.ones_like(t._value, dtype=np.float32)
             
 
         depends_on.append(T.Dependency(t, grad_fn_sum, ops_name))
@@ -84,7 +93,7 @@ def mul(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
         Element wise multiplication of two `Tensor`. Also it is calculate its 
         gradient of operation if tensor have_grad = True.
     '''
-    value = t1._value * t2._value
+    value = np.multiply(t1._value, t2._value, dtype=np.float32)
     have_grad = t1.have_grad or t2.have_grad
     ops_name = '_mul'
     depends_on: List[Dependency] = []
@@ -92,16 +101,16 @@ def mul(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
     if t1.have_grad:
         def grad_fn_mul1(grad: np.ndarray) -> np.ndarray:
             
-            grad = grad * t2._value
+            grad = np.multiply(grad, t2._value, dtype=np.float32)
 
             # to handle broadcast, add dimension
             ndims_added = grad.ndim - t1._value.ndim
             for _ in range(ndims_added):
-                grad = grad.sum(axis=0)
+                grad = grad.sum(axis=0, dtype=np.float32)
 
             for i, dim in enumerate(t1.shape):
                 if dim == 1:
-                    grad = grad.sum(axis=i, keepdims=True)
+                    grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
 
             return grad
             
@@ -110,15 +119,15 @@ def mul(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
     if t2.have_grad:
         def grad_fn_mul2(grad: np.ndarray) -> np.ndarray:
 
-            grad = grad * t1._value
+            grad = np.multiply(grad, t1._value, dtype=np.float32)
 
             ndims_added = grad.ndim - t2._value.ndim
             for _ in range(ndims_added):
-                grad = grad.sum(axis=0)
+                grad = grad.sum(axis=0, dtype=np.float32)
 
             for i, dim in enumerate(t2.shape):
                 if dim == 1:
-                    grad = grad.sum(axis=i, keepdims=True)
+                    grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
 
             return grad
         
@@ -133,7 +142,7 @@ def div(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
         Element wise division of two `Tensor`. Also it is calculate its 
         gradient of operation if tensor have_grad = True.
     '''
-    value = t1._value / (t2._value + 1e-10)
+    value = np.divide(t1._value, (t2._value + 1e-10), dtype=np.float32)
     have_grad = t1.have_grad or t2.have_grad
     ops_name = '_div'
 
@@ -142,16 +151,16 @@ def div(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
     if t1.have_grad:
         def grad_fn_div1(grad: np.ndarray) -> np.ndarray:
             
-            grad = grad / (t2._value + 1e-7)
+            grad = np.divide(grad, (t2._value + 1e-7), dtype=np.float32)
 
             # to handle broadcast, add dimension
             ndims_added = grad.ndim - t1._value.ndim
             for _ in range(ndims_added):
-                grad = grad.sum(axis=0)
+                grad = grad.sum(axis=0, dtype=np.float32)
 
             for i, dim in enumerate(t1.shape):
                 if dim == 1:
-                    grad = grad.sum(axis=i, keepdims=True)
+                    grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
 
             return grad
             
@@ -160,17 +169,17 @@ def div(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
     if t2.have_grad:
         def grad_fn_div2(grad: np.ndarray) -> np.ndarray:
 
-            grad = -(grad * t1._value) / ((t2._value ** 2) + 1e-7)
+            grad =np.divide( -(grad * t1._value), ((t2._value ** 2) + 1e-7), dtype=np.float32)
 
             #grad = grad / ((t2._value ** 2) + 1e-7)
 
             ndims_added = grad.ndim - t2._value.ndim
             for _ in range(ndims_added):
-                grad = grad.sum(axis=0)
+                grad = grad.sum(axis=0,dtype=np.float32)
 
             for i, dim in enumerate(t2.shape):
                 if dim == 1:
-                    grad = grad.sum(axis=i, keepdims=True)
+                    grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
 
             return grad
         
@@ -210,7 +219,7 @@ def matmul(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
             t1.grad = t3.grad @ t2.T  ==> (n1,m2) (m2, m1) => (n1,m1)
             t2.grad = t1.T @ t3.grad  ==> (m1,n1) (n1, m2) => (m1,m2)
     '''
-    value = t1._value @ t2._value
+    value = np.matmul(t1._value, t2._value, dtype=np.float32)
     have_grad = t1.have_grad or t2.have_grad
     ops_name = '_matmul'
 
@@ -218,13 +227,13 @@ def matmul(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
 
     if t1.have_grad:
         def grad_fn_matmul1(grad: np.ndarray) -> np.ndarray:
-            return grad @ t2._value.T
+            return np.matmul(grad, t2._value.T, dtype=np.float32)
 
         depends_on.append(T.Dependency(t1, grad_fn_matmul1, ops_name))
 
     if t2.have_grad:
         def grad_fn_matmul2(grad: np.ndarray) -> np.ndarray:
-            return t1._value.T @ grad
+            return np.matmul(t1._value.T, grad, dtype=np.float32)
 
         depends_on.append(T.Dependency(t2, grad_fn_matmul2, ops_name))
 
@@ -241,8 +250,8 @@ def tensor_slice(t: 'Tensor', idxs) -> 'Tensor':
 
     if have_grad:
         def grad_fn_slice(grad: np.ndarray) -> np.ndarray:
-            bigger_grad = np.zeros_like(t.value)
-            bigger_grad[idxs] = grad
+            bigger_grad = np.zeros_like(t.value, dtype=np.float32)
+            bigger_grad[idxs] = grad.astype(np.float32)
             return bigger_grad
 
         depends_on.append(T.Dependency(t, grad_fn_slice, ops_name))
@@ -256,7 +265,7 @@ def power(t: 'Tensor', p) -> 'Tensor':
         Power calculation of tensor. Also it is calculate its gradient of operation 
         if tensor have_grad = True..
     '''    
-    value = np.power(t._value, p)
+    value = np.power(t._value, p, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_pow'
 
@@ -267,9 +276,9 @@ def power(t: 'Tensor', p) -> 'Tensor':
             if p == 0:
                 grad = 0
             elif p < 0:
-                grad = p * 1. / (t._value ** abs(p-1)) * grad 
+                grad = np.multiply(np.multiply(p, np.divide(1., (np.power(t._value, abs(p-1))))), grad.astype(np.float32))
             else:
-                grad = p * (t._value) ** (p-1) * grad 
+                grad = np.multiply(np.multiply(p, np.power(t._value, (p-1))), grad.astype(np.float32))
             return grad            
 
         depends_on.append(T.Dependency(t, grad_fn_pow, ops_name))
@@ -286,7 +295,7 @@ def log(t: 'Tensor') -> 'Tensor':
         Log (also ln) calculation of tensor. Also it is calculate its gradient of operation 
         if tensor have_grad = True.
     '''
-    value = np.log(t._value + 1e-10)
+    value = np.log(t._value + 1e-10, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_log'
 
@@ -294,7 +303,7 @@ def log(t: 'Tensor') -> 'Tensor':
 
     if have_grad:
         def grad_fn_log(grad: np.ndarray) -> np.ndarray:
-            grad = (1. / (t._value + 1e-10)) * grad
+            grad = np.multiply(np.divide(1., (t._value + 1e-10),dtype=np.float32), grad, dtype=np.float32)
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_log, ops_name))
@@ -311,7 +320,7 @@ def log_b(t: 'Tensor', b: int) -> 'Tensor':
         Log of base b calculation of tensor. Also it is calculate its gradient of operation 
         if tensor have_grad = True.
     '''
-    value = np.log(t._value + 1e-10) / np.log(b + 1e-10)
+    value = np.divide(np.log(t._value + 1e-10, dtype=np.float32), np.log(b + 1e-10, dtype=np.float32), dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_log'
 
@@ -319,7 +328,7 @@ def log_b(t: 'Tensor', b: int) -> 'Tensor':
 
     if have_grad:
         def grad_fn_log(grad: np.ndarray) -> np.ndarray:
-            grad = (1. / (t._value * np.log(b) + 1e-10)) * grad
+            grad = np.multiply(np.divide(1., np.multiply(t._value, np.log(b,dtype=np.float32) + 1e-10, dtype=np.float32),dtype=np.float32), grad, dtype=np.float32)
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_log, ops_name))
@@ -336,13 +345,13 @@ def exp(t: 'Tensor') -> 'Tensor':
         Exponent calculation of tensor. Also it is calculate its gradient of operation 
         if tensor have_grad = True.
     '''
-    value = np.exp(t._value)
+    value = np.exp(t._value, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_exp'
 
     if have_grad:
         def grad_fn_exp(grad: np.ndarray) -> np.ndarray:
-            grad = value * grad
+            grad = np.multiply(value, grad, dtype=np.float32)
             return grad
 
         depends_on = [T.Dependency(t, grad_fn_exp, ops_name)]
@@ -360,7 +369,7 @@ def sin(t: 'Tensor') -> 'Tensor':
 
         Sinus in radian.
     '''
-    value = np.sin(t._value)
+    value = np.sin(t._value, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_sin'
 
@@ -368,7 +377,7 @@ def sin(t: 'Tensor') -> 'Tensor':
 
     if have_grad:
         def grad_fn_sin(grad: np.ndarray) -> np.ndarray:
-            grad = np.cos(t._value) * grad
+            grad = np.multiply(np.cos(t._value, dtype=np.float32), grad)
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_sin, ops_name))
@@ -389,7 +398,7 @@ def arcsin(t: 'Tensor') -> 'Tensor':
     '''
     assert np.all(t._value >= -np.pi/2) and np.all(t._value <= np.pi/2), \
         'Tensor value is not in rage which is -pi/2 <= value <= pi/2'
-    value = np.arcsin(t._value)
+    value = np.arcsin(t._value, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_arcsin'
 
@@ -397,7 +406,7 @@ def arcsin(t: 'Tensor') -> 'Tensor':
 
     if have_grad:
         def grad_fn_arcsin(grad: np.ndarray) -> np.ndarray:
-            grad = grad / (1. - t._value ** 2) ** 0.5
+            grad = np.power(np.divide(grad, (1. - np.power(t._value, 2, dtype=np.float32))), 0.5)
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_arcsin, ops_name))
@@ -416,7 +425,7 @@ def cos(t: 'Tensor') -> 'Tensor':
 
         Cosinus in radian.
     '''
-    value = np.cos(t._value)
+    value = np.cos(t._value, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_cos'
 
@@ -424,7 +433,7 @@ def cos(t: 'Tensor') -> 'Tensor':
 
     if have_grad:
         def grad_fn_cos(grad: np.ndarray) -> np.ndarray:
-            grad = -np.sin(t._value) * grad
+            grad = np.multiply(-np.sin(t._value), grad)
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_cos, ops_name))
@@ -445,7 +454,7 @@ def arccos(t: 'Tensor') -> 'Tensor':
     '''
     assert np.all(t._value >= -1.) and np.all(t._value <= 1.), \
         'Tensor value is not in rage which is -1 <= value <= 1'
-    value = np.arccos(t._value)
+    value = np.arccos(t._value, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_arccos'
 
@@ -453,7 +462,7 @@ def arccos(t: 'Tensor') -> 'Tensor':
 
     if have_grad:
         def grad_fn_arccos(grad: np.ndarray) -> np.ndarray:
-            grad = - grad / (1. - t._value ** 2) ** 0.5
+            grad = np.power(np.divide(- grad, (1. - np.power(t._value, 2, dtype=np.float32)), dtype=np.float32), 0.5, dtype=np.float32)
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_arccos, ops_name))
@@ -472,7 +481,7 @@ def tan(t: 'Tensor') -> 'Tensor':
 
         Tangent in radian.
     '''
-    value = np.tan(t._value)
+    value = np.tan(t._value, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_tan'
 
@@ -480,7 +489,7 @@ def tan(t: 'Tensor') -> 'Tensor':
 
     if have_grad:
         def grad_fn_tan(grad: np.ndarray) -> np.ndarray:
-            grad = (1./ np.cos(t._value)**2 + 1e-10) * grad
+            grad = np.multiply(np.divide(1., np.power(np.cos(t._value, dtype=np.float32), 2, dtype=np.float32) + 1e-10 ,dtype=np.float32), grad, dtype=np.float32)
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_tan, ops_name))
@@ -499,7 +508,7 @@ def arctan(t: 'Tensor') -> 'Tensor':
 
         Arctangent in radian. Tensor should be in range [-pi/2, pi/2]
     '''
-    value = np.arctan(t._value)
+    value = np.arctan(t._value, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_arctan'
 
@@ -507,7 +516,7 @@ def arctan(t: 'Tensor') -> 'Tensor':
 
     if have_grad:
         def grad_fn_arctan(grad: np.ndarray) -> np.ndarray:
-            grad = grad / (1. + t._value ** 2)
+            grad = np.divide(grad, (1. + np.power(t._value, 2, dtype=np.float32)), dtype=np.float32)
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_arctan, ops_name))
@@ -525,7 +534,7 @@ def cot(t: 'Tensor') -> 'Tensor':
 
         Cotangent in radian.
     '''
-    value = np.cot(t._value)
+    value = np.cot(t._value, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_cot'
 
@@ -533,7 +542,7 @@ def cot(t: 'Tensor') -> 'Tensor':
 
     if have_grad:
         def grad_fn_cot(grad: np.ndarray) -> np.ndarray:
-            grad = -(1./ np.sin(t._value)**2 + 1e-10) * grad
+            grad = np.multiply(-np.divide(1., np.power(np.sin(t._value), 2, dtype=np.float32) + 1e-10, dtype=np.float32), grad, dtype=np.float32)
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_cot, ops_name))
@@ -546,7 +555,7 @@ def cot(t: 'Tensor') -> 'Tensor':
 
 
 def mean(t: 'Tensor', axis=None, keepdim=False) -> 'Tensor':
-    value = np.mean(t.value, axis=axis, keepdims=keepdim)
+    value = np.mean(t.value, axis=axis, keepdims=keepdim, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_mean'
 
@@ -555,11 +564,11 @@ def mean(t: 'Tensor', axis=None, keepdim=False) -> 'Tensor':
     if have_grad:
         def grad_fn_mean(grad: np.ndarray) -> np.ndarray:
             if axis == None:
-                return grad / t.value.size
+                return np.divide(grad, t.value.size, dtype=np.float32)
             else:
-                ones = np.ones(t.value.shape) 
+                ones = np.ones(t.value.shape, dtype=np.float32) 
                 ax = axis
-                ones = ones * np.expand_dims(grad,ax) / t.value.size
+                ones = np.divide(np.multiply(ones, np.expand_dims(grad,ax), dtype=np.float32), t.value.size)
                 return ones
 
         depends_on.append(T.Dependency(t, grad_fn_mean, ops_name))
@@ -578,10 +587,10 @@ def where(t: 'Tensor', condition:None, _true:None, _false:None) -> 'Tensor':
     # if _true or _false are not tensor, convert it to tensor.
     _true = T.make_tensor(_true)
     if _true.grad == None:
-        _true.grad = T.Tensor(np.zeros_like(t.value, dtype=np.float64))
+        _true.grad = T.Tensor(np.zeros_like(t.value, dtype=np.float32))
     _false = T.make_tensor(_false)
     if _false.grad == None:
-        _false.grad = T.Tensor(np.zeros_like(t.value, dtype=np.float64))
+        _false.grad = T.Tensor(np.zeros_like(t.value, dtype=np.float32))
 
     value = np.where(condition, _true.value, _false.value)
     have_grad = _true.have_grad or _false.have_grad
@@ -591,13 +600,13 @@ def where(t: 'Tensor', condition:None, _true:None, _false:None) -> 'Tensor':
 
     if _true.have_grad:
         def grad_fn_whereT(grad: np.ndarray) -> np.ndarray:
-            return grad * np.where(condition, 1, 0)
+            return grad.astype(np.float32) * np.where(condition, 1, 0)
         
         depends_on.append(T.Dependency(_true, grad_fn_whereT, ops_name))
 
     if _false.have_grad:
         def grad_fn_whereF(grad: np.ndarray) -> np.ndarray:
-            return grad * np.where(condition, 0, 1)
+            return grad.astype(np.float32) * np.where(condition, 0, 1)
         
         depends_on.append(T.Dependency(_false, grad_fn_whereF, ops_name))
 
@@ -728,7 +737,7 @@ def sinh(t: 'Tensor') -> 'Tensor':
 
         Sinus in radian.
     '''
-    value = np.sinh(t._value)
+    value = np.sinh(t._value, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_sinh'
 
@@ -736,7 +745,7 @@ def sinh(t: 'Tensor') -> 'Tensor':
 
     if have_grad:
         def grad_fn_sinh(grad: np.ndarray) -> np.ndarray:
-            grad = np.cosh(t._value) * grad
+            grad = np.cosh(t._value, dtype=np.float32) * grad.astype(np.float32)
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_sinh, ops_name))
@@ -755,7 +764,7 @@ def cosh(t: 'Tensor') -> 'Tensor':
 
         Cosinus in radian.
     '''
-    value = np.cosh(t._value)
+    value = np.cosh(t._value, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_cosh'
 
@@ -763,7 +772,7 @@ def cosh(t: 'Tensor') -> 'Tensor':
 
     if have_grad:
         def grad_fn_cosh(grad: np.ndarray) -> np.ndarray:
-            grad = np.sinh(t._value) * grad
+            grad = np.sinh(t._value, dtype=np.float32) * grad.astype(np.float32)
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_cosh, ops_name))
@@ -776,7 +785,7 @@ def cosh(t: 'Tensor') -> 'Tensor':
 
 
 def abs(t: 'Tensor') -> 'Tensor':
-    value = np.absolute(t._value)
+    value = np.absolute(t._value, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_abs'
 
@@ -784,7 +793,7 @@ def abs(t: 'Tensor') -> 'Tensor':
 
     if have_grad:
         def grad_fn_abs(grad: np.ndarray) -> np.ndarray:
-            grad = np.sign(t._value) * grad
+            grad = np.sign(t._value, dtype=np.float32) * grad.astype(np.float32)
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_abs, ops_name))
@@ -798,7 +807,7 @@ def dropout(t: 'Tensor', p: float) -> 'Tensor':
         https://stats.stackexchange.com/questions/219236/dropout-forward-prop-vs-back-prop-in-machine-learning-neural-network
     """
     dropout_mask = np.random.binomial(1, 1.-p, size=t.shape)
-    value = t._value * dropout_mask * (1./(1.-p))
+    value = np.multiply(t._value, dropout_mask * (1./(1.-p)), dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_dropout'
 
@@ -806,7 +815,7 @@ def dropout(t: 'Tensor', p: float) -> 'Tensor':
 
     if have_grad:
         def grad_fn_dropout(grad: np.ndarray) -> np.ndarray:
-            grad = grad * dropout_mask * (1./(1.-p))
+            grad = grad.astype(np.float32) * dropout_mask * (1./(1.-p))
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_dropout, ops_name))
