@@ -5,8 +5,11 @@
         - Dense
         - Flatten
         - Activation
+        - Conv1D
         - Conv2D
+        - MaxPool1D
         - MaxPool2D
+        - AveragePool1D
         - AveragePool2D
         - Dropout
         - Batch Normalization
@@ -16,8 +19,8 @@
 
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
-    Update : 22 / 08 / 2020
-                Conv1D added.
+    Update : 24 / 08 / 2020
+                MaxPool1D & AveragePool1D added.
 """
 
 # import required modules
@@ -285,6 +288,7 @@ class Flatten(Layer):
         ------------------------------
 
         input_shape      : Shape of input when flatten layer is the first layer of model.
+                        Shape will be in form of (channel, height, width).
             >>> type     : tuple
             >>> Default  : None
 
@@ -393,6 +397,7 @@ class Conv2D(Layer):
             >>> Default     : True
 
         input_shape         : If Conv2D is first layer of model, input_shape should be declared.
+                            Shape will be in form of (channel, height, width).
             >>> type        : bool
             >>> Default     : None
 
@@ -589,7 +594,8 @@ class MaxPool2D(Layer):
             >>> type        : tuple
             >>> Default     : (2,2)
 
-        input_shape         : If MaxPool2D is first layer of model, input_shape shoudl be declared.
+        input_shape         : If MaxPool2D is first layer of model, input_shape should be declared.
+                            Shape will be in form of (channel, height, width).
             >>> type        : tuple
             >>> Default     : None
 
@@ -695,7 +701,8 @@ class AveragePool2D(Layer):
             >>> type            : tuple
             >>> Default         : (2,2)
 
-        input_shape         : If AveragePool2D is first layer of model, input_shape shoudl be declared.
+        input_shape             : If AveragePool2D is first layer of model, input_shape should be declared.
+                                Shape will be in form of (channel, height, width).
             >>> type            : tuple
             >>> Default         : None
 
@@ -1094,7 +1101,7 @@ class Conv1D(Layer):
             >>> Default     : True
 
         input_shape         : If Conv1D is first layer of model, input_shape should be declared.
-                            Shape will be in form of [batch_size, channel, width].
+                            Shape will be in form of (channel, width).
             >>> type        : bool
             >>> Default     : None
 
@@ -1214,3 +1221,186 @@ class Conv1D(Layer):
         if self._bias_regularizer:
             _res += self._bias_regularizer.compute(self._trainable[1])
         return _res
+
+
+
+
+class MaxPool1D(Layer):
+    """
+        MaxPool1D layer implementation implemented by myself based on MaxPool2D.
+        
+        MaxPooling is getting most dominant feature of data.
+
+        Arguments for initialization :
+        ------------------------------
+
+        kernel              : Size of kernel Width.
+            >>> type        : int
+            >>> Default     : 2
+
+        stride              : Stride of kernel Width
+            >>> type        : int
+            >>> Default     : 2
+
+        input_shape         : If MaxPool1D is first layer of model, input_shape should be declared.
+                            Shape will be in form of (channel, width).
+            >>> type        : tuple
+            >>> Default     : None
+
+        Implementation done by finding max values index and getting them.
+    """
+    def __init__(self,
+                kernel = 2,
+                stride = 2,
+                input_shape = None,
+                **kwargs):
+        super(MaxPool1D, self).__init__(**kwargs)
+        self._input_shape = input_shape
+        self._K = kernel
+        self._stride = stride
+
+    def __call__(self, params) -> None:
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('MaxPool1D')
+        params['activation'].append('none')
+        params['#parameters'].append(0)
+
+        # If MaxPool1D layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            # get channel and width of data
+            self._C, self._W = self._input_shape
+        else:
+            # MaxPool1D layer is not first layer. So get channel and width 
+            # of data from previous layer output shape
+            self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
+
+        self._O =  int((self._W - self._K ) / self._stride + 1)
+        
+        self._output_shape = (self._C, self._O)
+
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add channel number to layer neuron number into model params
+        params['model_neuron'].append(self._C)
+
+    def _init_trainable(self, params):
+        # MaxPool1D layer has no initialized parameters. Thus, pass it.
+        pass
+
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of MaxPool1D layer.
+        '''
+        # gettin input shapes separately
+        N, C, W = inputs.shape
+        # findin pooling locations
+        i = conv_util.get_conv1D_indices(self._K, self._stride, self._O)
+        # getting local spaces
+        inputs = inputs[:, :, i]
+        # arrange dimensions
+        inputs = T.transpose(inputs,(3,0,1,2))
+        # flat local spaces
+        inputs = T.reshape(inputs, (self._K, -1))         
+        # find max values' index 
+        max_idx = np.argmax(inputs.value, axis=0)
+        # get max values
+        inputs = inputs[max_idx, range(max_idx.size)] 
+        ## reshape it to output
+        inputs = T.reshape(inputs, (N, -1, self._O))
+        return inputs
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer. This layer do not have regularizable parameter.
+        """
+        return T.Tensor(0.)
+
+
+
+class AveragePool1D(Layer):
+    """
+        AveragePool1D layer implementation which done by myself based on AveragePool2D.
+
+        AveragePool is getting average feature of data.
+
+        Arguments for initialization :
+        ------------------------------
+
+        kernel                  : Size of kernel Width. 
+            >>> type            : int
+            >>> Default         : 2
+
+        stride                  : Stride of kernel Width. 
+            >>> type            : int
+            >>> Default         : 2
+
+        input_shape             : If AveragePool1D is first layer of model, input_shape should be declared.
+                                Shape will be in form of (channel, width).
+            >>> type            : tuple
+            >>> Default         : None
+
+        Implementation done by finding average values.
+    """
+    def __init__(self,
+                kernel = 2,
+                stride = 2,
+                input_shape = None,
+                **kwargs):
+        super(AveragePool1D, self).__init__(**kwargs)
+        self._input_shape = input_shape
+        self._K = kernel
+        self._stride = stride
+        
+    def __call__(self, params) -> None:
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('AveragePool1D')
+        params['activation'].append('none')
+        params['#parameters'].append(0)
+
+        # If AveragePool1D layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            # get channel and width of data
+            self._C, self._W = self._input_shape
+        else:
+            # AveragePool1D layer is not first layer. So get channel and width 
+            # of data from previous layer output shape
+            self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
+
+        self._O =  int((self._W - self._K ) / self._stride + 1)
+        
+        self._output_shape = (self._C, self._O)
+
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add channel number to layer neuron number into model params
+        params['model_neuron'].append(self._C)
+
+    def _init_trainable(self, params):
+        # AveragePool1D layer has no initialized parameters. Thus, pass it.
+        pass
+
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of AveragePool1D layer.
+        '''
+        # gettin input shapes separately
+        N, C, W = inputs.shape
+        # findin pooling locations
+        i = conv_util.get_conv1D_indices(self._K, self._stride, self._O)
+        # getting local spaces
+        inputs = inputs[:, :, i]
+        # arrange dimensions
+        inputs = T.transpose(inputs,(3,0,1,2))
+        # flat local spaces
+        inputs = T.reshape(inputs, (self._K, -1))         
+        # get mean values 
+        inputs = T.mean(inputs, axis=0)
+        # reshape it to output
+        inputs = T.reshape(inputs, (N, -1, self._O))
+        return inputs
+        
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer. This layer do not have regularizable parameter.
+        """
+        return T.Tensor(0.) 
