@@ -4,13 +4,13 @@
     Author : @MGokcayK 
     Create : 30 / 04 / 2020
     Update : 27 / 08 / 2020
-                Add get_conv3D_indices.
+                Add get_conv3D_indices and update im2col_indices for new padding approach.
 """
 
 import numpy as np
 
 
-def get_im2col_indices(X_shape, kernel, stride, padding):
+def get_im2col_indices(X_shape, kernel, stride, output):
     """    
         Implementation applied from : https://cs231n.github.io/convolutional-networks/#overview 
     of assingment 2.
@@ -24,17 +24,17 @@ def get_im2col_indices(X_shape, kernel, stride, padding):
     stride_row = stride[0]
     stride_col = stride[1]
     # calculate output shape
-    H_out = int((H - HH + 2 * padding) / stride_row + 1)
-    W_out = int((W - WW + 2 * padding) / stride_col + 1)
+    H_out, W_out = output[1], output[2]
     # calculate kernel locations
     i0 = np.repeat(np.arange(HH), WW)
     i0 = np.tile(i0, C)    
     i1 = stride_row * np.repeat(np.arange(H_out), W_out)    
-    j0 = np.tile(np.arange(HH), WW * C)    
+    j0 = np.tile(np.arange(WW), HH * C)    
     j1 = stride_col * np.tile(np.arange(W_out), H_out)
     i = i0.reshape(-1, 1) + i1.reshape(1, -1)
     j = j0.reshape(-1, 1) + j1.reshape(1, -1)
     k = np.repeat(np.arange(C), HH * WW).reshape(-1, 1)
+    #print(j)
 
     return (k.astype(int), i.astype(int), j.astype(int))
 
