@@ -10,8 +10,10 @@
         - Conv3D
         - MaxPool1D
         - MaxPool2D
+        - MaxPool3D
         - AveragePool1D
         - AveragePool2D
+        - AveragePool3D
         - Dropout
         - Batch Normalization
 
@@ -21,7 +23,7 @@
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
     Update : 27 / 08 / 2020
-                Conv3D added and make trainable parameters' type as float32.
+                MaxPool3D and AveragePool3D added.
 """
 
 # import required modules
@@ -1605,3 +1607,267 @@ class Conv3D(Layer):
         if self._bias_regularizer:
             _res += self._bias_regularizer.compute(self._trainable[1])
         return _res
+
+
+
+class MaxPool3D(Layer):
+    """
+        MaxPool3D layer implemented by @Author based on MaxPool2D.
+
+        MaxPooling is getting most dominant feature of data.
+
+        Arguments for initialization :
+        ------------------------------
+
+        kernel              : Size of kernel (Height, Width, Depth). It should declared seperately.
+            >>> type        : tuple
+            >>> Default     : (2,2,2)
+
+        stride              : Stride of kernel (Height, Width, Depth). It should declared seperately.
+            >>> type        : tuple
+            >>> Default     : (2,2,2)
+
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Height`, `Width`
+            and `Depth`. 
+            >>> type        : string
+            >>> Default     : 'valid'
+
+        input_shape         : If MaxPool3D is first layer of model, input_shape should be declared.
+                            Shape will be in form of (channel, depth, height, width).
+            >>> type        : tuple
+            >>> Default     : None
+
+        Implementation done by finding max values index and getting them.
+    """
+    def __init__(self,
+                kernel = (2,2,2),
+                stride = (2,2,2),
+                padding = 'valid',
+                input_shape = None,
+                **kwargs):
+        super(MaxPool3D, self).__init__(**kwargs)
+        self._input_shape = input_shape
+        self._K_shape = kernel
+        self._stride = stride
+        self._padding = padding.lower()
+
+    def __call__(self, params) -> None:
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('MaxPool3D')
+        params['activation'].append('none')
+        params['#parameters'].append(0)
+
+        # If MaxPool3D layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            # get channel, depth, width and height of data
+            self._C, self._D, self._H, self._W = self._input_shape
+        else:
+            # MaxPool3D layer is not first layer. So get channel, width and height
+            # of data from previous layer output shape
+            self._C, self._D, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
+
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self.H_out =  int(np.ceil(self._H / self._stride[0] ))
+            self.W_out =  int(np.ceil(self._W / self._stride[1] ))
+            self.D_out =  int(np.ceil(self._D / self._stride[2] ))
+            print(self.H_out, self.W_out, self.D_out)
+            pd_h = max((self.H_out - 1) * self._stride[0] + self._K_shape[0] - self._H, 0) # height padding 
+            pd_w = max((self.W_out - 1) * self._stride[1] + self._K_shape[1] - self._W, 0) # width padding
+            pd_d = max((self.D_out - 1) * self._stride[2] + self._K_shape[2] - self._D, 0) # depth padding
+            pd_top = int(pd_h / 2) # top side padding 
+            pd_bot = int(pd_h - pd_top) # bottom side padding 
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+            pd_front = int(pd_d // 2) # front side padding 
+            pd_back = int(pd_d - pd_front) # back side padding 
+        else:
+            pd_top, pd_bot, pd_left, pd_right, pd_front, pd_back = 0, 0, 0, 0, 0, 0 
+            self.H_out =  int((self._H - self._K_shape[0] ) / self._stride[0] + 1)
+            self.W_out =  int((self._W - self._K_shape[1] ) / self._stride[1] + 1)
+            self.D_out =  int((self._D - self._K_shape[2] ) / self._stride[2] + 1)
+        
+        
+        self._P = ((pd_top, pd_bot), (pd_left, pd_right), (pd_front, pd_back))   
+
+        self._output_shape = (self._C, self.D_out, self.H_out, self.W_out)
+
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add channel number to layer neuron number into model params
+        params['model_neuron'].append(self._C)
+
+    def _init_trainable(self, params):
+        # MaxPool3D layer has no initialized parameters. Thus, pass it.
+        pass
+
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of MaxPool3D layer.
+        '''
+        # apply padding
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[2][0],self._P[2][1]),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
+                    mode='constant', constant_values=0)
+        # gettin input shapes separately
+        N, C, D, H, W = inputs.shape
+        # reshape inputs
+        inputs = T.reshape(inputs, (N * C, 1, D, H, W))
+        # findin pooling locations
+        l, k, i, j = conv_util.get_conv3D_indices(inputs.shape, self._K_shape, self._stride, self._output_shape)
+        # getting local spaces
+        inputs = inputs[:,l, k,i,j]
+        # arrange dimensions
+        inputs = T.transpose(inputs,(1,2,0))
+        # flat local spaces
+        inputs = T.reshape(inputs, (self._K_shape[0] * self._K_shape[1] * self._K_shape[2] , -1)) 
+        # find max values' index 
+        max_idx = np.argmax(inputs.value, axis=0)
+        # get max values
+        inputs = inputs[max_idx, range(max_idx.size)] 
+        # reshape it to output
+        inputs = T.reshape(inputs, (self.D_out, self.H_out, self.W_out, N, C))
+        # arrange dimensions
+        inputs = T.transpose(inputs, (3,4,0,1,2))
+        return inputs
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer. This layer do not have regularizable parameter.
+        """
+        return T.Tensor(0.)
+
+
+
+class AveragePool3D(Layer):
+    """
+        AveragePool3D layer implemented by @Author based on AveragePool2D.
+
+        AveragePool is getting average feature of data.
+
+        Arguments for initialization :
+        ------------------------------
+
+        kernel              : Size of kernel (Height, Width, Depth). It should declared seperately.
+            >>> type        : tuple
+            >>> Default     : (2,2,2)
+
+        stride              : Stride of kernel (Height, Width, Depth). It should declared seperately.
+            >>> type        : tuple
+            >>> Default     : (2,2,2)
+
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Height`, `Width`
+            and `Depth`. 
+            >>> type        : string
+            >>> Default     : 'valid'
+
+        input_shape         : If AveragePool3D is first layer of model, input_shape should be declared.
+                            Shape will be in form of (channel, depth, height, width).
+            >>> type        : tuple
+            >>> Default     : None
+
+        Implementation done by finding max values index and getting them.
+    """
+    def __init__(self,
+                kernel = (2,2,2),
+                stride = (2,2,2),
+                padding = 'valid',
+                input_shape = None,
+                **kwargs):
+        super(AveragePool3D, self).__init__(**kwargs)
+        self._input_shape = input_shape
+        self._K_shape = kernel
+        self._stride = stride
+        self._padding = padding.lower()
+
+    def __call__(self, params) -> None:
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('AveragePool3D')
+        params['activation'].append('none')
+        params['#parameters'].append(0)
+
+        # If AveragePool3D layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            # get channel, depth, width and height of data
+            self._C, self._D, self._H, self._W = self._input_shape
+        else:
+            # AveragePool3D layer is not first layer. So get channel, width and height
+            # of data from previous layer output shape
+            self._C, self._D, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
+
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self.H_out =  int(np.ceil(self._H / self._stride[0] ))
+            self.W_out =  int(np.ceil(self._W / self._stride[1] ))
+            self.D_out =  int(np.ceil(self._D / self._stride[2] ))
+            print(self.H_out, self.W_out, self.D_out)
+            pd_h = max((self.H_out - 1) * self._stride[0] + self._K_shape[0] - self._H, 0) # height padding 
+            pd_w = max((self.W_out - 1) * self._stride[1] + self._K_shape[1] - self._W, 0) # width padding
+            pd_d = max((self.D_out - 1) * self._stride[2] + self._K_shape[2] - self._D, 0) # depth padding
+            pd_top = int(pd_h / 2) # top side padding 
+            pd_bot = int(pd_h - pd_top) # bottom side padding 
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+            pd_front = int(pd_d // 2) # front side padding 
+            pd_back = int(pd_d - pd_front) # back side padding 
+        else:
+            pd_top, pd_bot, pd_left, pd_right, pd_front, pd_back = 0, 0, 0, 0, 0, 0 
+            self.H_out =  int((self._H - self._K_shape[0] ) / self._stride[0] + 1)
+            self.W_out =  int((self._W - self._K_shape[1] ) / self._stride[1] + 1)
+            self.D_out =  int((self._D - self._K_shape[2] ) / self._stride[2] + 1)
+        
+        
+        self._P = ((pd_top, pd_bot), (pd_left, pd_right), (pd_front, pd_back))   
+
+        self._output_shape = (self._C, self.D_out, self.H_out, self.W_out)
+
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add channel number to layer neuron number into model params
+        params['model_neuron'].append(self._C)
+
+    def _init_trainable(self, params):
+        # AveragePool3D layer has no initialized parameters. Thus, pass it.
+        pass
+
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of AveragePool3D layer.
+        '''
+        # apply padding
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[2][0],self._P[2][1]),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
+                    mode='constant', constant_values=0)
+        # gettin input shapes separately
+        N, C, D, H, W = inputs.shape
+        # reshape inputs
+        inputs = T.reshape(inputs, (N * C, 1, D, H, W))
+        # findin pooling locations
+        l, k, i, j = conv_util.get_conv3D_indices(inputs.shape, self._K_shape, self._stride, self._output_shape)
+        # getting local spaces
+        inputs = inputs[:,l, k,i,j]
+        # arrange dimensions
+        inputs = T.transpose(inputs,(1,2,0))
+        # flat local spaces
+        inputs = T.reshape(inputs, (self._K_shape[0] * self._K_shape[1] * self._K_shape[2] , -1)) 
+        # find mean values through axis 0
+        inputs = T.mean(inputs, axis=0) 
+        # reshape it to output
+        inputs = T.reshape(inputs, (self.D_out, self.H_out, self.W_out, N, C))
+        # arrange dimensions
+        inputs = T.transpose(inputs, (3,4,0,1,2))
+        return inputs
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer. This layer do not have regularizable parameter.
+        """
+        return T.Tensor(0.)
