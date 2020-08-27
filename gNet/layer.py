@@ -7,6 +7,7 @@
         - Activation
         - Conv1D
         - Conv2D
+        - Conv3D
         - MaxPool1D
         - MaxPool2D
         - AveragePool1D
@@ -19,8 +20,8 @@
 
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
-    Update : 24 / 08 / 2020
-                MaxPool1D & AveragePool1D added.
+    Update : 27 / 08 / 2020
+                Conv3D added and make trainable parameters' type as float32.
 """
 
 # import required modules
@@ -248,8 +249,8 @@ class Dense(Layer):
         # get initialized values of weight and biases
         _w, _b = self._get_inits(_w_shape, _b_shape)
         # append weight and biases into trainable as `tensor`.
-        self._trainable.append(T.Tensor(_w, have_grad=True))
-        self._trainable.append(T.Tensor(_b, have_grad=True))
+        self._trainable.append(T.Tensor(_w.astype(np.float32), have_grad=True))
+        self._trainable.append(T.Tensor(_b.astype(np.float32), have_grad=True))
 
     def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
         '''
@@ -481,9 +482,9 @@ class Conv2D(Layer):
         _b_shape = (self._filter, 1)
         _K, _b = self._get_inits(_k_shape, _b_shape)
         # make kernels as  tensor
-        _K = T.Tensor(_K, have_grad=True)
+        _K = T.Tensor(_K.astype(np.float32), have_grad=True)
         # make biases as tensor
-        _b = T.Tensor(_b, have_grad=True)
+        _b = T.Tensor(_b.astype(np.float32), have_grad=True)
         # add them to trainable list
         self._trainable.append(_K)
         self._trainable.append(_b)
@@ -979,10 +980,10 @@ class BatchNormalization(Layer):
 
         p_coef = 2
         if self._use_gamma:
-            self._trainable.append(T.Tensor(self._gamma, have_grad=True))
+            self._trainable.append(T.Tensor(self._gamma.astype(np.float32), have_grad=True))
             p_coef += 1
         if self._use_beta:
-            self._trainable.append(T.Tensor(self._beta, have_grad=True))
+            self._trainable.append(T.Tensor(self._beta.astype(np.float32), have_grad=True))
             p_coef += 1
 
         params['#parameters'].append(len(self._r_var)*p_coef)
@@ -1177,9 +1178,9 @@ class Conv1D(Layer):
         _b_shape = (self._filter, 1)
         _K, _b = self._get_inits(_k_shape, _b_shape)
         # make kernels as  tensor
-        _K = T.Tensor(_K, have_grad=True)
+        _K = T.Tensor(_K.astype(np.float32), have_grad=True)
         # make biases as tensor
-        _b = T.Tensor(_b, have_grad=True)
+        _b = T.Tensor(_b.astype(np.float32), have_grad=True)
         # add them to trainable list
         self._trainable.append(_K)
         self._trainable.append(_b)
@@ -1404,3 +1405,203 @@ class AveragePool1D(Layer):
             Regularization of layer. This layer do not have regularizable parameter.
         """
         return T.Tensor(0.) 
+
+
+
+class Conv3D(Layer):
+    """
+        Conv3D layer implementation. Conv3D implementation done by @Author based on Conv2D.
+
+        Note:
+        -----
+        gNet use `channel first` approach. Therefore, make sure that your data have `channel first` shape.
+
+        Arguments for initialization :
+        ------------------------------
+
+        filter              : Number of filter.
+            >>> type        : int
+            >>> Default     : 1
+
+        kernel              : Size of kernel (Height, Width, Depth). It should declared seperately.
+            >>> type        : tuple
+            >>> Default     : (1,1,1)
+
+        stride              : Stride of kernel (Height, Width, Depth). It should declared seperately.
+            >>> type        : tuple
+            >>> Default     : (1,1,1)
+
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Height`, `Width`
+            and `Depth`. 
+            >>> type        : string
+            >>> Default     : 'valid'
+
+        initialize_method   : Layer initialization method.
+            >>> type        : str or custom initializer class
+            >>> Default     : 'xavier_uniform'
+
+        bias_initializer    : Layer's bias's initialization method.
+            >>> type        : str or custom initializer class
+            >>> Default     : 'zeros_init'
+
+        kernel_regularizer  : Regularizer method of kernels of layer.
+            >>> type        : regularizer class
+            >>> Default     
+
+        bias_regularizer    : Regularizer method of biases of layer.
+            >>> type        : regularizer class
+            >>> Default     : None
+
+        bias                : Bool of using bias during calculation.
+            >>> type        : bool
+            >>> Default     : True
+
+        input_shape         : If Conv3D is first layer of model, input_shape should be declared.
+                            Shape will be in form of (channel, depth, height, width).
+            >>> type        : tuple
+            >>> Default     : None
+
+        Arguments for compute method is tensor of previous method in proper size.
+
+        Its compute method calculation based on flatten local space of input and kernels then 
+        stored as 2D array. After making 2D array, by using dot product, calculation of all 
+        convolution can be done. Then, reshaping result to proper size. 
+    """
+    def __init__(self,
+                filter = 1,
+                kernel = (1,1,1),
+                stride = (1,1,1),
+                padding = 'valid',
+                initialize_method = 'xavier_uniform',
+                bias_initializer = 'zeros_init',
+                kernel_regularizer = None,
+                bias_regularizer = None,
+                use_bias = True,
+                input_shape = None,
+                **kwargs):
+        super(Conv3D, self).__init__(**kwargs)
+        self._input_shape = input_shape
+        self._filter = filter
+        self._K_shape = kernel
+        self._stride = stride
+        self._padding = padding.lower()
+        self._bias = use_bias
+        self._initialize_method = initialize_method
+        self._bias_initialize_method = bias_initializer
+        self._set_initializer()
+        self._kernel_regularizer = kernel_regularizer
+        self._bias_regularizer = bias_regularizer
+
+    def __call__(self, params) -> None:
+        '''
+            Update of some of model parameters and class parameters.
+        '''
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('Conv3D')
+        params['activation'].append('none')
+        params['#parameters'].append(self._filter * self._K_shape[0] * self._K_shape[1] * self._K_shape[2] + self._filter)
+
+        # If Conv3D layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            assert len(self._input_shape) == 4, 'Make sure that input of Conv3D has 4 dimension without batch such as (3,10,28,28).'
+            # get channel, width and height of data
+            self._C, self._D, self._H, self._W = self._input_shape
+        else:
+            # Conv3D layer is not first layer. So get channel, depth, width and height
+            # of data from previous layer output shape
+            assert self._thisLayer != 0, 'First layer of Conv3D should have input_shape!'
+            self._C, self._D, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
+
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self.H_out =  int(np.ceil(self._H / self._stride[0] ))
+            self.W_out =  int(np.ceil(self._W / self._stride[1] ))
+            self.D_out =  int(np.ceil(self._D / self._stride[2] ))
+            pd_h = max((self.H_out - 1) * self._stride[0] + self._K_shape[0] - self._H, 0) # height padding 
+            pd_w = max((self.W_out - 1) * self._stride[1] + self._K_shape[1] - self._W, 0) # width padding
+            pd_d = max((self.D_out - 1) * self._stride[2] + self._K_shape[2] - self._D, 0) # depth padding
+            pd_top = int(pd_h / 2) # top side padding 
+            pd_bot = int(pd_h - pd_top) # bottom side padding 
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+            pd_front = int(pd_d // 2) # front side padding 
+            pd_back = int(pd_d - pd_front) # back side padding 
+        else:
+            pd_top, pd_bot, pd_left, pd_right, pd_front, pd_back = 0, 0, 0, 0, 0, 0 
+            self.H_out =  int((self._H - self._K_shape[0] ) / self._stride[0] + 1)
+            self.W_out =  int((self._W - self._K_shape[1] ) / self._stride[1] + 1)
+            self.D_out =  int((self._D - self._K_shape[2] ) / self._stride[2] + 1)
+        
+        
+        self._P = ((pd_top, pd_bot), (pd_left, pd_right), (pd_front, pd_back))     
+        
+
+        self._output_shape = (self._filter, self.D_out, self.H_out, self.W_out)
+
+        
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add flattened layer neuron number to model params
+        params['model_neuron'].append(self._filter)
+
+        self._init_trainable(params)
+
+    def _init_trainable(self, params):
+        '''
+            Initialization of Conv3D layer's trainable variables.
+        '''
+        # create kernel and bias
+        _k_shape = (self._filter, self._C, self._K_shape[2], self._K_shape[0], self._K_shape[1])
+        _b_shape = (self._filter, 1)
+        _K, _b = self._get_inits(_k_shape, _b_shape)
+        # make kernels as  tensor
+        _K = T.Tensor(_K.astype(np.float32), have_grad=True)
+        # make biases as tensor
+        _b = T.Tensor(_b.astype(np.float32), have_grad=True)
+        # add them to trainable list
+        self._trainable.append(_K)
+        self._trainable.append(_b)
+
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of Conv3D layer.
+        '''
+        # getting input shapes separately
+        N, C, D, H, W = inputs.shape
+        # base_shape 
+        base_shape = inputs.shape
+        # padding 
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[2][0],self._P[2][1]),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
+                    mode='constant', constant_values=0)
+        # location of local space
+        l, k, i, j = conv_util.get_conv3D_indices(base_shape, self._K_shape, self._stride, self._output_shape)
+        # get local spaces of inputs
+        value = inputs[:,l, k, i, j].value
+        # flat the local spaces
+        value = value.transpose(1,2,0).reshape((self._K_shape[0] * self._K_shape[1] * self._K_shape[2] * C, -1))
+        # dot product of kernels and local spaces
+        inputs = T.dot(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value)  )
+        # adding if use_bias is true
+        if self._bias:
+            inputs.value += self._trainable[1].value
+        # reshape dot product to output shape
+        inputs = T.reshape(inputs, (self._filter, self.D_out, self.H_out, self.W_out, N))
+        # arrange dimensions
+        inputs = T.transpose(inputs, (4, 0, 1, 2, 3))
+        return inputs
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer.
+        """
+        _res = T.Tensor(0.)
+        if self._kernel_regularizer:
+            _res += self._kernel_regularizer.compute(self._trainable[0])
+        if self._bias_regularizer:
+            _res += self._bias_regularizer.compute(self._trainable[1])
+        return _res
