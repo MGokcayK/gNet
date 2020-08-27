@@ -23,7 +23,7 @@
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
     Update : 27 / 08 / 2020
-                MaxPool3D and AveragePool3D added.
+                Pooling approach updated and #parameters of Conv3D fixed.
 """
 
 # import required modules
@@ -374,10 +374,10 @@ class Conv2D(Layer):
             >>> type        : tuple
             >>> Default     : (1,1)
 
-        padding             : How many padding of input. Integer should give declare number of 
-                            padding constant. 
-            >>> type        : int                            
-            >>> Default     : 0
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Height` and `Width`. 
+            >>> type        : string
+            >>> Default     : 'valid'
 
         initialize_method   : Layer initialization method.
             >>> type        : str or custom initializer class
@@ -414,7 +414,7 @@ class Conv2D(Layer):
                 filter = 1,
                 kernel = (1,1),
                 stride = (1,1),
-                padding = 0,
+                padding = 'valid',
                 initialize_method = 'xavier_uniform',
                 bias_initializer = 'zeros_init',
                 kernel_regularizer = None,
@@ -429,7 +429,7 @@ class Conv2D(Layer):
         self._WW = kernel[1]
         self._stride_row = stride[0]
         self._stride_col = stride[1]
-        self._padding = padding
+        self._padding = padding.lower()
         self._bias = use_bias
         self._initialize_method = initialize_method
         self._bias_initialize_method = bias_initializer
@@ -457,13 +457,24 @@ class Conv2D(Layer):
             assert self._thisLayer != 0, 'First layer of Conv2D should have input_shape!'
             self._C, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
 
-        # assert (self._H - self._HH + 2 * self._padding) % self._stride_row == 0, \
-        #     'Kernel, Stride or Padding property for Height of Input is not proper. Please check them.'
-        # assert (self._W - self._WW + 2 * self._padding) % self._stride_col == 0, \
-        #     'Kernel, Stride or Padding property for Width of Input is not proper. Please check them.'
-
-        self.H_out =  int((self._H - self._HH + 2 * self._padding) / self._stride_row + 1)
-        self.W_out =  int((self._W - self._WW + 2 * self._padding) / self._stride_col + 1)
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self.H_out =  int(np.ceil(self._H / self._stride_row ))
+            self.W_out =  int(np.ceil(self._W / self._stride_col ))
+            pd_h = max((self.H_out - 1) * self._stride_row + self._HH - self._H, 0) # height padding 
+            pd_w = max((self.W_out - 1) * self._stride_col + self._WW - self._W, 0) # width padding
+            pd_top = int(pd_h / 2) # top side padding 
+            pd_bot = int(pd_h - pd_top) # bottom side padding 
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+        else:
+            pd_top, pd_bot, pd_left, pd_right = 0, 0, 0, 0
+            self.H_out =  int((self._H - self._HH ) / self._stride_row + 1)
+            self.W_out =  int((self._W - self._WW ) / self._stride_col + 1)
+            
+        self._P = ((pd_top, pd_bot), (pd_left, pd_right))  
 
         self._output_shape = (self._filter, self.H_out, self.W_out)
 
@@ -497,18 +508,19 @@ class Conv2D(Layer):
         '''
         # getting input shapes separately
         N, C, H, W = inputs.shape
-        # base_shape 
-        base_shape = inputs.shape
         # padding 
-        if self._padding != 0:
-            inputs.value = np.pad(inputs.value, ((0, 0), (0, 0), \
-                (self._padding, self._padding), (self._padding, self._padding)), mode='constant')
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
+                    mode='constant', constant_values=0)
         # location of local space
-        k, i, j = conv_util.get_im2col_indices(base_shape, (self._HH, self._WW), (self._stride_row, self._stride_col), self._padding)
+        k, i, j = conv_util.get_im2col_indices(inputs.shape, (self._HH, self._WW), (self._stride_row, self._stride_col), self._output_shape )
         # get local spaces of inputs
+        #print(inputs)
         value = inputs[:, k, i, j].value
         # flat the local spaces
         value = value.transpose(1,2,0).reshape((self._HH * self._WW * C, -1))
+        #print(value)
         # dot product of kernels and local spaces
         inputs = T.dot(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value)  )
         # adding if use_bias is true
@@ -596,6 +608,11 @@ class MaxPool2D(Layer):
         stride              : Stride of kernel (Height, Width). It should declared seperately.
             >>> type        : tuple
             >>> Default     : (2,2)
+        
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Height` and `Width`. 
+            >>> type        : string
+            >>> Default     : 'valid'
 
         input_shape         : If MaxPool2D is first layer of model, input_shape should be declared.
                             Shape will be in form of (channel, height, width).
@@ -607,6 +624,7 @@ class MaxPool2D(Layer):
     def __init__(self,
                 kernel = (2,2),
                 stride = (2,2),
+                padding = 'valid',
                 input_shape = None,
                 **kwargs):
         super(MaxPool2D, self).__init__(**kwargs)
@@ -615,6 +633,7 @@ class MaxPool2D(Layer):
         self._WW = kernel[1]
         self._stride_row = stride[0]
         self._stride_col = stride[1]
+        self._padding = padding.lower()
 
     def __call__(self, params) -> None:
         self._thisLayer = params['layer_number']
@@ -631,13 +650,24 @@ class MaxPool2D(Layer):
             # of data from previous layer output shape
             self._C, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
 
-        # assert (self._H - self._HH ) % self._stride_row == 0, \
-        #     'MaxPool2D height of kernel is not proper. Please check them.'
-        # assert (self._W - self._WW ) % self._stride_col == 0, \
-        #     'MaxPool2D width of kernel is not proper. Please check them.'
-
-        self.H_out =  int((self._H - self._HH ) / self._stride_row + 1)
-        self.W_out =  int((self._W - self._WW ) / self._stride_col + 1)
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self.H_out =  int(np.ceil(self._H / self._stride_row ))
+            self.W_out =  int(np.ceil(self._W / self._stride_col ))
+            pd_h = max((self.H_out - 1) * self._stride_row + self._HH - self._H, 0) # height padding 
+            pd_w = max((self.W_out - 1) * self._stride_col + self._WW - self._W, 0) # width padding
+            pd_top = int(pd_h / 2) # top side padding 
+            pd_bot = int(pd_h - pd_top) # bottom side padding 
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+        else:
+            pd_top, pd_bot, pd_left, pd_right = 0, 0, 0, 0
+            self.H_out =  int((self._H - self._HH ) / self._stride_row + 1)
+            self.W_out =  int((self._W - self._WW ) / self._stride_col + 1)
+            
+        self._P = ((pd_top, pd_bot), (pd_left, pd_right))  
 
         self._output_shape = (self._C, self.H_out, self.W_out)
 
@@ -654,6 +684,11 @@ class MaxPool2D(Layer):
         '''
             Computation of MaxPool2D layer.
         '''
+        # padding 
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
+                    mode='constant', constant_values=0)
         # gettin input shapes separately
         N, C, H, W = inputs.shape
         # reshape inputs
@@ -661,7 +696,7 @@ class MaxPool2D(Layer):
         # getting temp input shape
         tmp = inputs.shape
         # findin pooling locations
-        k, i, j = conv_util.get_im2col_indices(inputs.shape, (self._HH, self._WW), (self._stride_row, self._stride_col), 0)
+        k, i, j = conv_util.get_im2col_indices(inputs.shape, (self._HH, self._WW), (self._stride_row, self._stride_col), self._output_shape)
         # getting local spaces
         inputs = inputs[:, k,i,j]
         # arrange dimensions
@@ -704,6 +739,11 @@ class AveragePool2D(Layer):
             >>> type            : tuple
             >>> Default         : (2,2)
 
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Height` and `Width`. 
+            >>> type        : string
+            >>> Default     : 'valid'
+
         input_shape             : If AveragePool2D is first layer of model, input_shape should be declared.
                                 Shape will be in form of (channel, height, width).
             >>> type            : tuple
@@ -714,6 +754,7 @@ class AveragePool2D(Layer):
     def __init__(self,
                 kernel = (2,2),
                 stride = (2,2),
+                padding = 'valid',
                 input_shape = None,
                 **kwargs):
         super(AveragePool2D, self).__init__(**kwargs)
@@ -722,6 +763,7 @@ class AveragePool2D(Layer):
         self._WW = kernel[1]
         self._stride_row = stride[0]
         self._stride_col = stride[1]
+        self._padding = padding.lower()
 
     def __call__(self, params) -> None:
         self._thisLayer = params['layer_number']
@@ -738,8 +780,24 @@ class AveragePool2D(Layer):
             # of data from previous layer output shape
             self._C, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
 
-        self.H_out =  int((self._H - self._HH ) / self._stride_row + 1)
-        self.W_out =  int((self._W - self._WW ) / self._stride_col + 1)
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self.H_out =  int(np.ceil(self._H / self._stride_row ))
+            self.W_out =  int(np.ceil(self._W / self._stride_col ))
+            pd_h = max((self.H_out - 1) * self._stride_row + self._HH - self._H, 0) # height padding 
+            pd_w = max((self.W_out - 1) * self._stride_col + self._WW - self._W, 0) # width padding
+            pd_top = int(pd_h / 2) # top side padding 
+            pd_bot = int(pd_h - pd_top) # bottom side padding 
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+        else:
+            pd_top, pd_bot, pd_left, pd_right = 0, 0, 0, 0
+            self.H_out =  int((self._H - self._HH ) / self._stride_row + 1)
+            self.W_out =  int((self._W - self._WW ) / self._stride_col + 1)
+            
+        self._P = ((pd_top, pd_bot), (pd_left, pd_right))  
 
         self._output_shape = (self._C, self.H_out, self.W_out)
 
@@ -756,6 +814,11 @@ class AveragePool2D(Layer):
         '''
             Computation of AveragePool2D layer.
         '''
+        # padding 
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
+                    mode='constant', constant_values=0)
         # gettin input shapes separately
         N, C, H, W = inputs.shape
         # reshape inputs
@@ -763,7 +826,7 @@ class AveragePool2D(Layer):
         # getting temp input shape
         tmp = inputs.shape
         # findin pooling locations
-        k, i, j = conv_util.get_im2col_indices(inputs.shape, (self._HH, self._WW), (self._stride_row, self._stride_col), 0)
+        k, i, j = conv_util.get_im2col_indices(inputs.shape, (self._HH, self._WW), (self._stride_row, self._stride_col), self._output_shape)
         # getting local spaces
         inputs = inputs[:, k,i,j]
         # arrange dimensions
@@ -1078,10 +1141,10 @@ class Conv1D(Layer):
             >>> type        : int
             >>> Default     : 1
 
-        padding             : How many padding of input. Integer should give declare number of 
-                            padding constant. 
-            >>> type        : int                            
-            >>> Default     : 0
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Width`. 
+            >>> type        : string
+            >>> Default     : 'valid'
 
         initialize_method   : Layer initialization method.
             >>> type        : str or custom initializer class
@@ -1118,7 +1181,7 @@ class Conv1D(Layer):
                 filter = 1,
                 kernel = 1,
                 stride = 1,
-                padding = 0,
+                padding = 'valid',
                 initialize_method = 'xavier_uniform',
                 bias_initializer = 'zeros_init',
                 kernel_regularizer = None,
@@ -1131,7 +1194,7 @@ class Conv1D(Layer):
         self._filter = filter
         self._K = kernel
         self._stride = stride
-        self._padding = padding
+        self._padding = padding.lower()
         self._bias = use_bias
         self._initialize_method = initialize_method
         self._bias_initialize_method = bias_initializer
@@ -1159,9 +1222,20 @@ class Conv1D(Layer):
             assert self._thisLayer != 0, 'First layer of Conv1D should have input_shape!'
             self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
 
-        # output dimension
-        self._O =  int((self._W - self._K + 2 * self._padding) / self._stride + 1)
-        
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self._O =  int(np.ceil(self._W / self._stride ))
+            pd_w = max((self._O - 1) * self._stride + self._K - self._W, 0) # width padding
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+        else:
+            pd_left, pd_right = 0, 0
+            self._O =  int((self._W - self._K ) / self._stride + 1)
+
+        self._P = (pd_left, pd_right)
+
         self._output_shape = (self._filter, self._O)
 
         # add output shape to model params without batch_size
@@ -1194,9 +1268,10 @@ class Conv1D(Layer):
         # getting input shapes separately
         N, C, W = inputs.shape
         # padding 
-        if self._padding != 0:
-            inputs.value = np.pad(inputs.value, ((0,0),(self._padding, self._padding),(0,0)), mode='constant', constant_values=0)
-
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[0], self._P[1])), \
+                    mode='constant', constant_values=0)
         # location of local space
         i = conv_util.get_conv1D_indices(self._K, self._stride, self._O)
         # get local spaces of inputs
@@ -1227,7 +1302,6 @@ class Conv1D(Layer):
 
 
 
-
 class MaxPool1D(Layer):
     """
         MaxPool1D layer implementation implemented by myself based on MaxPool2D.
@@ -1244,6 +1318,11 @@ class MaxPool1D(Layer):
         stride              : Stride of kernel Width
             >>> type        : int
             >>> Default     : 2
+        
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Width`. 
+            >>> type        : string
+            >>> Default     : 'valid'
 
         input_shape         : If MaxPool1D is first layer of model, input_shape should be declared.
                             Shape will be in form of (channel, width).
@@ -1255,12 +1334,14 @@ class MaxPool1D(Layer):
     def __init__(self,
                 kernel = 2,
                 stride = 2,
+                padding = 'valid',
                 input_shape = None,
                 **kwargs):
         super(MaxPool1D, self).__init__(**kwargs)
         self._input_shape = input_shape
         self._K = kernel
         self._stride = stride
+        self._padding = padding.lower()
 
     def __call__(self, params) -> None:
         self._thisLayer = params['layer_number']
@@ -1277,8 +1358,20 @@ class MaxPool1D(Layer):
             # of data from previous layer output shape
             self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
 
-        self._O =  int((self._W - self._K ) / self._stride + 1)
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self._O =  int(np.ceil(self._W / self._stride ))
+            pd_w = max((self._O - 1) * self._stride + self._K - self._W, 0) # width padding
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+        else:
+            pd_left, pd_right = 0, 0
+            self._O =  int((self._W - self._K ) / self._stride + 1)
         
+        self._P = (pd_left, pd_right)
+
         self._output_shape = (self._C, self._O)
 
         # add output shape to model params without batch_size
@@ -1294,6 +1387,11 @@ class MaxPool1D(Layer):
         '''
             Computation of MaxPool1D layer.
         '''
+        # padding 
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[0], self._P[1])), \
+                    mode='constant', constant_values=0)
         # gettin input shapes separately
         N, C, W = inputs.shape
         # findin pooling locations
@@ -1337,6 +1435,11 @@ class AveragePool1D(Layer):
             >>> type            : int
             >>> Default         : 2
 
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Width`. 
+            >>> type        : string
+            >>> Default     : 'valid'
+
         input_shape             : If AveragePool1D is first layer of model, input_shape should be declared.
                                 Shape will be in form of (channel, width).
             >>> type            : tuple
@@ -1347,12 +1450,14 @@ class AveragePool1D(Layer):
     def __init__(self,
                 kernel = 2,
                 stride = 2,
+                padding = 'valid',
                 input_shape = None,
                 **kwargs):
         super(AveragePool1D, self).__init__(**kwargs)
         self._input_shape = input_shape
         self._K = kernel
         self._stride = stride
+        self._padding = padding.lower()
         
     def __call__(self, params) -> None:
         self._thisLayer = params['layer_number']
@@ -1369,7 +1474,20 @@ class AveragePool1D(Layer):
             # of data from previous layer output shape
             self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
 
-        self._O =  int((self._W - self._K ) / self._stride + 1)
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self._O =  int(np.ceil(self._W / self._stride ))
+            pd_w = max((self._O - 1) * self._stride + self._K - self._W, 0) # width padding
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+            print(pd_w, pd_left, pd_right)
+        else:
+            pd_left, pd_right = 0, 0
+            self._O =  int((self._W - self._K ) / self._stride + 1)
+        
+        self._P = (pd_left, pd_right)
         
         self._output_shape = (self._C, self._O)
 
@@ -1386,8 +1504,14 @@ class AveragePool1D(Layer):
         '''
             Computation of AveragePool1D layer.
         '''
+        # padding 
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[0], self._P[1])), \
+                    mode='constant', constant_values=0)
         # gettin input shapes separately
         N, C, W = inputs.shape
+        #print(inputs)
         # findin pooling locations
         i = conv_util.get_conv1D_indices(self._K, self._stride, self._O)
         # getting local spaces
@@ -1397,7 +1521,9 @@ class AveragePool1D(Layer):
         # flat local spaces
         inputs = T.reshape(inputs, (self._K, -1))         
         # get mean values 
+        #print(inputs)
         inputs = T.mean(inputs, axis=0)
+        #print(inputs)
         # reshape it to output
         inputs = T.reshape(inputs, (N, -1, self._O))
         return inputs
@@ -1502,7 +1628,6 @@ class Conv3D(Layer):
         self._thisLayer = params['layer_number']
         params['layer_name'].append('Conv3D')
         params['activation'].append('none')
-        params['#parameters'].append(self._filter * self._K_shape[0] * self._K_shape[1] * self._K_shape[2] + self._filter)
 
         # If Conv3D layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -1514,6 +1639,8 @@ class Conv3D(Layer):
             # of data from previous layer output shape
             assert self._thisLayer != 0, 'First layer of Conv3D should have input_shape!'
             self._C, self._D, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
+
+        params['#parameters'].append(self._filter * self._K_shape[0] * self._K_shape[1] * self._K_shape[2] * self._C + self._filter)
 
         if self._padding == 'same':
             # To handle even size kernel padding, we put more constant to right and bottom side 
