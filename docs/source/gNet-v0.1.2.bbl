@@ -1,4 +1,4 @@
-\begin{thebibliography}{4}
+\begin{thebibliography}{5}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -9,6 +9,11 @@
 J.~Grus.
 \newblock Autograd, 2019.
 \newblock URL \url{https://github.com/joelgrus/autograd}.
+
+\bibitem[Kabataş(2020)]{MGK}
+M.~G. Kabataş.
+\newblock gnet, 2020.
+\newblock URL \url{https://github.com/MGokcayK/gNet}.
 
 \bibitem[Li(2020)]{cs231}
 F.-F. Li.

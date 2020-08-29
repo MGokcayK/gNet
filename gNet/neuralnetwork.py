@@ -14,8 +14,8 @@
 
     Author : @MGokcayK 
     Create : 25 / 03 / 2020
-    Update : 04 / 07 / 2020
-                Added evaluate_one_batch.
+    Update : 29 / 08 / 2020
+                Changing batch data from differentiable to non-differentiable.
 """
 
 # import built in modules
@@ -126,6 +126,7 @@ class NeuralNetwork:
         ''' Feed Forward of NN w.r.t input as inp.'''
         # for each layer, compute the layer and pass the parametes as inp to next layer
         for layer in self._layer:
+            #print(inp.shape, layer)
             inp = layer.compute(inp, train)
         return inp
 
@@ -300,11 +301,8 @@ class NeuralNetwork:
                 # make zero of all grads of model because of AD structure.
                 self._model.zero_grad()
 
-                # if model has Conv2D layer make the input differentiable/gradientable
-                # if not system works slow because try to calculate _x's grads.
-                first_layer = self._model.get_params()['layer_name'][0]     
                 # get batch of train and label data                          
-                _x_batch = T.make_tensor(x[_start:_end], have_grad=True if first_layer == 'Conv2D' else False)
+                _x_batch = T.make_tensor(x[_start:_end])
                 _y_batch = T.make_tensor(y[_start:_end])
 
                 # predict the batch
@@ -370,10 +368,6 @@ class NeuralNetwork:
                     >>> type    : list
                     >>> Default : ['loss', 'accuracy'] 
 
-                printing        : printing parameters during training.
-                    >>> type    : list
-                    >>> Default : ['loss', 'accuracy'] 
-
                 single_batch    : calculate single batch values.
                     >>> type    : bool
                     >>> Default : True
@@ -414,11 +408,8 @@ class NeuralNetwork:
         # make zero of all grads of model because of AD structure.
         self._model.zero_grad()
 
-        # if model has Conv2D layer make the input differentiable/gradientable
-        # if not system works slow because try to calculate _x's grads.
-        first_layer = self._model.get_params()['layer_name'][0]     
         # get batch of train and label data                          
-        _x_batch = T.make_tensor(x_batch, have_grad=True if first_layer == 'Conv2D' else False)
+        _x_batch = T.make_tensor(x_batch)
         _y_batch = T.make_tensor(y_batch)
         # predict the batch
         _pred = self._feedForward(_x_batch, True)

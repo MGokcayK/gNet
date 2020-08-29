@@ -94,7 +94,7 @@
 \makeatother
 
 
-\title {gNet (v0.1)}
+\title {gNet (v0.1.2)}
 \author{Mehmet Gökçay KABATAŞ - MGokcayK \\ github.com/MGokcayK \\ \texttt{mgokcaykdev@gmail.com}
 }
 
@@ -149,6 +149,21 @@ To install with [pip][https://pypi.org]
 \begin{lstlisting}[language=bash, numbers=none, caption={Install with pip}, label={ex:install}]
 pip install gNet
 \end{lstlisting}
+
+
+
+\chapter{What is difference from previous version?}
+
+\paragraph{}
+There is a several addition and changes from previos version which is v0.1. These difference can be listed as :
+
+\begin{itemize}
+	\item Addition of Conv1D, Conv3D, MaxPool1D, MaxPool3D, AveragePool1D, AveragePool3D layers.
+	\item Edit dtype of operations and values as float32 to increase calculation speed and memory reduction. 
+	\item Padding approach is changed and and added several layers which has not padding before such as MaxPool2D.
+	\item Fixing Batch Normalization which is not applicaple with even kernel size and make layer works with 1D and 3D layers. 
+	\item Adding assertation to some layer input parameters to avoid giving wrong input and make it understandable for end user.
+\end{itemize}
 
 
 
@@ -1159,23 +1174,6 @@ Flatten layer's append model's some parameters as :
 
 
 
-\section{Conv2D Layer}
-
-\paragraph{}
-Conv2D layer is convolution of 2D data. Implementation done from Stanford lecture notes \cite{cs231}. Im2col approach is used in gNet. Therefore; channel first is used in gNet. It is different than Tensorflow. Its compute method calculation based on flatten local space of input and kernels then stored as 2D array. After making 2D array, by using dot product, calculation of all convolution can be done. Then, reshaping result to proper size. 
-
-\paragraph{}
-Conv2D layer's append model's some parameters as :
-\begin{itemize}
-	\item `layer\_name' as 'Conv2D',
-	\item `activation` as 'none',
-	\item `model\_neuron` as '\#filter',
-	\item `layer\_output\_shape` as '(filter, H\_out, W\_out)',
-	\item `\#parameters` as '\#filter * H\_kernel * W\_kernel + \#filter'.
-\end{itemize}
-
-
-
 \section{Activation Layer}
 
 \paragraph{}
@@ -1189,42 +1187,6 @@ Activation layer's append model's some parameters as :
 	\item `activation` as 'activation of layer',
 	\item `model\_neuron` as 'previous layer neuron number',
 	\item `layer\_output\_shape` as 'previous layer output shape',
-	\item `\#parameters` as '0'.
-\end{itemize}
-
-
-
-\section{MaxPool2D Layer}
-
-\paragraph{}
-MaxPool2D layer is maximum pooling of 2D data. Implementation done from Stanford lecture notes \cite{cs231}. Its compute method calculation based on flatten local space of input's max values and store values and their indexes. Creating output as proper shaped tensor. There is no regularization like flatten layer.
-
-\paragraph{}
-MaxPool2D layer's append model's some parameters as :
-\begin{itemize}
-	\item `layer\_name' as 'MaxPool2D',
-	\item `activation` as 'none',
-	\item `model\_neuron` as '0',
-	\item `layer\_output\_shape` as '(C, H\_out, W\_out)',
-	\item `\#parameters` as '0'.
-\end{itemize}
-
-
-
-
-
-\section{AveragePool2D Layer}
-
-\paragraph{}
-AveragePool2D layer is average pooling of 2D data. Implementation done from Stanford lecture notes \cite{cs231}. Its compute method calculation based on flatten local space of input's average values. Creating output as proper shaped tensor. There is no regularization like flatten layer.
-
-\paragraph{}
-AveragePool2D layer's append model's some parameters as :
-\begin{itemize}
-	\item `layer\_name' as 'AveragePool2D',
-	\item `activation` as 'none',
-	\item `model\_neuron` as '0',
-	\item `layer\_output\_shape` as '(C, H\_out, W\_out)',
 	\item `\#parameters` as '0'.
 \end{itemize}
 
@@ -1272,6 +1234,159 @@ Batch Normalization  layer's append model's some parameters as :
 	\item `model\_neuron` as 'previous layer neuron number',
 	\item `layer\_output\_shape` as 'previous layer neuron output shape',
 	\item `\#parameters` as depends on which parameter used.
+\end{itemize}
+
+
+
+\section{Conv1D Layer}
+
+\paragraph{}
+Conv1D layer is convolution of 1D data. Implementation done by \cite{MGK}. Im2col approach is used in gNet. Therefore; channel first is used in gNet. It is different than Tensorflow. Its compute method calculation based on flatten local space of input and kernels then stored as 2D array. After making 2D array, by using dot product, calculation of all convolution can be done. Then, reshaping result to proper size. 
+
+\paragraph{}
+Conv1D layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'Conv1D',
+	\item `activation` as 'none',
+	\item `model\_neuron` as '\#filter',
+	\item `layer\_output\_shape` as '(filter, Channel, Width)',
+	\item `\#parameters` as '\#filter * kernel size + \#filter'.
+\end{itemize}
+
+
+
+\section{Conv2D Layer}
+
+\paragraph{}
+Conv2D layer is convolution of 2D data. Implementation done from Stanford lecture notes \cite{cs231}. Im2col approach is used in gNet. Therefore; channel first is used in gNet. It is different than Tensorflow. Its compute method calculation based on flatten local space of input and kernels then stored as 2D array. After making 2D array, by using dot product, calculation of all convolution can be done. Then, reshaping result to proper size. 
+
+\paragraph{}
+Conv2D layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'Conv2D',
+	\item `activation` as 'none',
+	\item `model\_neuron` as '\#filter',
+	\item `layer\_output\_shape` as '(filter, H\_out, W\_out)',
+	\item `\#parameters` as '\#filter * H\_kernel * W\_kernel + \#filter'.
+\end{itemize}
+
+
+
+\section{Conv3D Layer}
+
+\paragraph{}
+Conv3D layer is convolution of 3D data. Implementation done by \cite{MGK}. Im2col approach is used in gNet. Therefore; channel first is used in gNet. It is different than Tensorflow. Its compute method calculation based on flatten local space of input and kernels then stored as 2D array. After making 2D array, by using dot product, calculation of all convolution can be done. Then, reshaping result to proper size. 
+
+\paragraph{}
+Conv3D layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'Conv3D',
+	\item `activation` as 'none',
+	\item `model\_neuron` as '\#filter',
+	\item `layer\_output\_shape` as '(filter, Channel, Depth, Height , Width)',
+	\item `\#parameters` as '\#filter * kernel\_D * kernel\_H * kernel\_W * Channel size + \#filter'.
+\end{itemize}
+
+
+
+\section{MaxPool1D Layer}
+
+\paragraph{}
+MaxPool1D layer is maximum pooling of 1D data. Implementation done by \cite{MGK}. Its compute method calculation based on flatten local space of input's max values and store values and their indexes. Creating output as proper shaped tensor. There is no regularization like flatten layer.
+
+\paragraph{}
+MaxPool1D layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'MaxPool1D',
+	\item `activation` as 'none',
+	\item `model\_neuron` as '0',
+	\item `layer\_output\_shape` as '(C, W\_out)',
+	\item `\#parameters` as '0'.
+\end{itemize}
+
+
+
+\section{MaxPool2D Layer}
+
+\paragraph{}
+MaxPool2D layer is maximum pooling of 2D data. Implementation done from Stanford lecture notes \cite{cs231}. Its compute method calculation based on flatten local space of input's max values and store values and their indexes. Creating output as proper shaped tensor. There is no regularization like flatten layer.
+
+\paragraph{}
+MaxPool2D layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'MaxPool2D',
+	\item `activation` as 'none',
+	\item `model\_neuron` as '0',
+	\item `layer\_output\_shape` as '(C, H\_out, W\_out)',
+	\item `\#parameters` as '0'.
+\end{itemize}
+
+
+
+\section{MaxPool3D Layer}
+
+\paragraph{}
+MaxPool3D layer is maximum pooling of 1D data. Implementation done by \cite{MGK}. Its compute method calculation based on flatten local space of input's max values and store values and their indexes. Creating output as proper shaped tensor. There is no regularization like flatten layer.
+
+\paragraph{}
+MaxPool3D layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'MaxPool3D',
+	\item `activation` as 'none',
+	\item `model\_neuron` as '0',
+	\item `layer\_output\_shape` as '(C, D\_out, H\_out W\_out)',
+	\item `\#parameters` as '0'.
+\end{itemize}
+
+
+
+\section{AveragePool1D Layer}
+
+\paragraph{}
+AveragePool1D layer is average pooling of 1D data. Implementation done by \cite{MGK}. Its compute method calculation based on flatten local space of input's average values. Creating output as proper shaped tensor. There is no regularization like flatten layer.
+
+\paragraph{}
+AveragePool1D layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'AveragePool1D',
+	\item `activation` as 'none',
+	\item `model\_neuron` as '0',
+	\item `layer\_output\_shape` as '(C, W\_out)',
+	\item `\#parameters` as '0'.
+\end{itemize}
+
+
+
+\section{AveragePool2D Layer}
+
+\paragraph{}
+AveragePool2D layer is average pooling of 2D data. Implementation done from Stanford lecture notes \cite{cs231}. Its compute method calculation based on flatten local space of input's average values. Creating output as proper shaped tensor. There is no regularization like flatten layer.
+
+\paragraph{}
+AveragePool2D layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'AveragePool2D',
+	\item `activation` as 'none',
+	\item `model\_neuron` as '0',
+	\item `layer\_output\_shape` as '(C, H\_out, W\_out)',
+	\item `\#parameters` as '0'.
+\end{itemize}
+
+
+
+\section{AveragePool3D Layer}
+
+\paragraph{}
+AveragePool3D layer is average pooling of 1D data. Implementation done by \cite{MGK}. Its compute method calculation based on flatten local space of input's average values. Creating output as proper shaped tensor. There is no regularization like flatten layer.
+
+\paragraph{}
+AveragePool3D layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'AveragePool3D',
+	\item `activation` as 'none',
+	\item `model\_neuron` as '0',
+	\item `layer\_output\_shape` as '(C, D\_out, H\_out W\_out)',
+	\item `\#parameters` as '0'.
 \end{itemize}
 
 
@@ -1735,7 +1850,8 @@ These modules are used some utility function of gNet. conv\_utils has utility fu
 \paragraph{}
 utils has `make\_one\_hot` function which makes sparse label values into one\_hot vector label. Also, utils has `MNIST\_Downloader` which helps to download and load MNIST data \cite{MNIST}.
 
-
+\paragraph{}
+conv\_utils module has some functions which are helper function to find indexes of convolution operations. For each convolution layers which are Conv1D, Conv2D and Conv3D, indexes can be found differently, yet same approach. Therefore, this module has 3 subfunctions. 
 
 
 
