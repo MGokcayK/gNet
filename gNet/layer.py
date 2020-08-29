@@ -22,8 +22,8 @@
 
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
-    Update : 27 / 08 / 2020
-                Pooling approach updated and #parameters of Conv3D fixed.
+    Update : 28 / 08 / 2020
+                Fixing Batch Normalization and adding assertion for some layers' inputs.
 """
 
 # import required modules
@@ -423,6 +423,9 @@ class Conv2D(Layer):
                 input_shape = None,
                 **kwargs):
         super(Conv2D, self).__init__(**kwargs)
+        assert np.array(filter).size == 1, 'Make sure that filter size of Conv2D has 1 dimension such as 32, get : ' + str(filter)
+        assert np.array(kernel).size == 2, 'Make sure that kernel size of Conv2D has 2 dimension such as (2,2), get : ' + str(kernel)
+        assert np.array(stride).size == 2, 'Make sure that stride size of Conv2D has 2 dimension such as (2,2), get : ' + str(stride)
         self._input_shape = input_shape
         self._filter = filter
         self._HH = kernel[0]
@@ -628,6 +631,8 @@ class MaxPool2D(Layer):
                 input_shape = None,
                 **kwargs):
         super(MaxPool2D, self).__init__(**kwargs)
+        assert np.array(kernel).size == 2, 'Make sure that kernel size of MaxPool2D has 2 dimension such as (2,2), get : ' + str(kernel)
+        assert np.array(stride).size == 2, 'Make sure that stride size of MaxPool2D has 2 dimension such as (2,2), get : ' + str(stride)
         self._input_shape = input_shape
         self._HH = kernel[0]
         self._WW = kernel[1]
@@ -758,6 +763,8 @@ class AveragePool2D(Layer):
                 input_shape = None,
                 **kwargs):
         super(AveragePool2D, self).__init__(**kwargs)
+        assert np.array(kernel).size == 2, 'Make sure that kernel size of AveragePool2D has 2 dimension such as (2,2), get : ' + str(kernel)
+        assert np.array(stride).size == 2, 'Make sure that stride size of AveragePool2D has 2 dimension such as (2,2), get : ' + str(stride)
         self._input_shape = input_shape
         self._HH = kernel[0]
         self._WW = kernel[1]
@@ -1031,27 +1038,30 @@ class BatchNormalization(Layer):
         
         pre_layer_output = np.array([params['layer_output_shape'][self._thisLayer - 1]])
         
-        # if BN after dense layer, parameter shape is different than after conv2D layer.
+        # if BN after dense layer, parameter shape is different than after conv layers.
         if len(pre_layer_output.shape) == 1:
             self._gamma = self._gamma_init.get_init(shape=pre_layer_output)
             self._beta = self._beta_init.get_init(shape=pre_layer_output)
             self._r_mean = self._r_mean_init.get_init(shape=pre_layer_output)
             self._r_var = self._r_var_init.get_init(shape=pre_layer_output)
+            params['#parameters'].append(pre_layer_output[0] * 4)
         else:
-            self._gamma = self._gamma_init.get_init(shape=pre_layer_output[0][1])
-            self._beta = self._beta_init.get_init(shape=pre_layer_output[0][1])
-            self._r_mean = self._r_mean_init.get_init(shape=pre_layer_output[0][1])
-            self._r_var = self._r_var_init.get_init(shape=pre_layer_output[0][1])
+            self._trainable_shape = [1,int(pre_layer_output[0][0])]
+            for _ in range(len(pre_layer_output[0])-1):
+                self._trainable_shape.append(1)
+            self._axis = list(np.arange(len(pre_layer_output.shape)+2))
+            del self._axis[1]
+            self._gamma = self._gamma_init.get_init(shape=self._trainable_shape)
+            self._beta = self._beta_init.get_init(shape=self._trainable_shape)
+            self._r_mean = self._r_mean_init.get_init(shape=self._trainable_shape)
+            self._r_var = self._r_var_init.get_init(shape=self._trainable_shape)
+            params['#parameters'].append(pre_layer_output[0][0] * 4)
 
-        p_coef = 2
         if self._use_gamma:
             self._trainable.append(T.Tensor(self._gamma.astype(np.float32), have_grad=True))
-            p_coef += 1
         if self._use_beta:
             self._trainable.append(T.Tensor(self._beta.astype(np.float32), have_grad=True))
-            p_coef += 1
 
-        params['#parameters'].append(len(self._r_var)*p_coef)
 
         
     def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
@@ -1061,12 +1071,13 @@ class BatchNormalization(Layer):
         if train:
             # calculate mean and variance of inputs
             if len(inputs.shape) == 2:
-                mu = np.mean(inputs.value, axis=0)
-                var = np.mean((inputs.value - mu)**2, axis=0)
-            else:                
-                mu = np.mean(inputs.value, axis=(0,2,3), keepdims=True)
-                var = np.var(inputs.value, axis=(0,2,3), keepdims=True)
+                mu = np.mean(inputs.value, axis=0, dtype=np.float32)
+                var = np.mean((inputs.value - mu)**2, axis=0, dtype=np.float32)
+            else:         
+                mu = np.mean(inputs.value, axis=tuple(self._axis), keepdims=True, dtype=np.float32)
+                var = np.var(inputs.value, axis=tuple(self._axis), keepdims=True, dtype=np.float32)
 
+            #print(var.shape, self._trainable[0].shape)
             # calculate division part of formula
             div = 1./ np.sqrt(var + self._epsilon)
 
@@ -1075,6 +1086,7 @@ class BatchNormalization(Layer):
                 div =  div * self._trainable[0]
 
             # formula apply
+            #print(inputs.shape, div.shape, mu.shape)
             inputs = inputs * div - mu * div
 
             # if offset is used, offset it
@@ -1190,6 +1202,9 @@ class Conv1D(Layer):
                 input_shape = None,
                 **kwargs):
         super(Conv1D, self).__init__(**kwargs)
+        assert np.array(filter).size == 1, 'Make sure that filter size of Conv1D has 1 dimension such as 32, get : ' + str(filter)
+        assert np.array(kernel).size == 1, 'Make sure that kernel size of Conv1D has 1 dimension such as 2, get : ' + str(kernel)
+        assert np.array(stride).size == 1, 'Make sure that stride size of Conv1D has 1 dimension such as 2, get : ' + str(stride)
         self._input_shape = input_shape
         self._filter = filter
         self._K = kernel
@@ -1338,6 +1353,8 @@ class MaxPool1D(Layer):
                 input_shape = None,
                 **kwargs):
         super(MaxPool1D, self).__init__(**kwargs)
+        assert np.array(kernel).size == 1, 'Make sure that kernel size of MaxPool1D has 1 dimension such as 2, get : ' + str(kernel)
+        assert np.array(stride).size == 1, 'Make sure that stride size of MaxPool1D has 1 dimension such as 2, get : ' + str(stride)
         self._input_shape = input_shape
         self._K = kernel
         self._stride = stride
@@ -1454,6 +1471,8 @@ class AveragePool1D(Layer):
                 input_shape = None,
                 **kwargs):
         super(AveragePool1D, self).__init__(**kwargs)
+        assert np.array(kernel).size == 1, 'Make sure that kernel size of AveragePool1D has 1 dimension such as 2, get : ' + str(kernel)
+        assert np.array(stride).size == 1, 'Make sure that stride size of AveragePool1D has 1 dimension such as 2, get : ' + str(stride)
         self._input_shape = input_shape
         self._K = kernel
         self._stride = stride
@@ -1609,6 +1628,9 @@ class Conv3D(Layer):
                 input_shape = None,
                 **kwargs):
         super(Conv3D, self).__init__(**kwargs)
+        assert np.array(filter).size == 1, 'Make sure that filter size of Conv3D has 1 dimension such as 32, get : ' + str(filter)
+        assert np.array(kernel).size == 3, 'Make sure that kernel size of Conv3D has 3 dimension such as (2,2,2), get : ' + str(kernel)
+        assert np.array(stride).size == 3, 'Make sure that stride size of Conv3D has 3 dimension such as (2,2,2), get : ' + str(stride)
         self._input_shape = input_shape
         self._filter = filter
         self._K_shape = kernel
@@ -1774,6 +1796,8 @@ class MaxPool3D(Layer):
                 input_shape = None,
                 **kwargs):
         super(MaxPool3D, self).__init__(**kwargs)
+        assert np.array(kernel).size == 3, 'Make sure that kernel size of MaxPool3D has 3 dimension such as (2,2,2), get : ' + str(kernel)
+        assert np.array(stride).size == 3, 'Make sure that stride size of MaxPool3D has 3 dimension such as (2,2,2), get : ' + str(stride)
         self._input_shape = input_shape
         self._K_shape = kernel
         self._stride = stride
@@ -1907,6 +1931,8 @@ class AveragePool3D(Layer):
                 input_shape = None,
                 **kwargs):
         super(AveragePool3D, self).__init__(**kwargs)
+        assert np.array(kernel).size == 3, 'Make sure that kernel size of AveragePool3D has 3 dimension such as (2,2,2), get : ' + str(kernel)
+        assert np.array(stride).size == 3, 'Make sure that stride size of AveragePool3D has 3 dimension such as (2,2,2), get : ' + str(stride)
         self._input_shape = input_shape
         self._K_shape = kernel
         self._stride = stride
@@ -1998,3 +2024,6 @@ class AveragePool3D(Layer):
             Regularization of layer. This layer do not have regularizable parameter.
         """
         return T.Tensor(0.)
+
+
+
