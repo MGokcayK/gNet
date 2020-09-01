@@ -22,8 +22,8 @@
 
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
-    Update : 28 / 08 / 2020
-                Fixing Batch Normalization and adding assertion for some layers' inputs.
+    Update : 01 / 09 / 2020
+                Fixing bias update.
 """
 
 # import required modules
@@ -519,16 +519,15 @@ class Conv2D(Layer):
         # location of local space
         k, i, j = conv_util.get_im2col_indices(inputs.shape, (self._HH, self._WW), (self._stride_row, self._stride_col), self._output_shape )
         # get local spaces of inputs
-        #print(inputs)
         value = inputs[:, k, i, j].value
         # flat the local spaces
         value = value.transpose(1,2,0).reshape((self._HH * self._WW * C, -1))
-        #print(value)
         # dot product of kernels and local spaces
         inputs = T.dot(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value)  )
         # adding if use_bias is true
         if self._bias:
-            inputs.value += self._trainable[1].value
+            inputs += self._trainable[1]
+
         # reshape dot product to output shape
         inputs = T.reshape(inputs, (self._filter, self.H_out, self.W_out, N))
         # arrange dimensions
@@ -1297,7 +1296,7 @@ class Conv1D(Layer):
         inputs = T.dot(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value))
         # adding if use_bias is true
         if self._bias:
-            inputs.value += self._trainable[1].value
+            inputs += self._trainable[1]
         # reshape dot product to output shape
         inputs = T.reshape(inputs, (self._filter, self._O, N))
         # arrange dimensions
@@ -1739,7 +1738,7 @@ class Conv3D(Layer):
         inputs = T.dot(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value)  )
         # adding if use_bias is true
         if self._bias:
-            inputs.value += self._trainable[1].value
+            inputs += self._trainable[1]
         # reshape dot product to output shape
         inputs = T.reshape(inputs, (self._filter, self.D_out, self.H_out, self.W_out, N))
         # arrange dimensions
@@ -2024,6 +2023,5 @@ class AveragePool3D(Layer):
             Regularization of layer. This layer do not have regularizable parameter.
         """
         return T.Tensor(0.)
-
 
 
