@@ -3,8 +3,8 @@
 
     Author : @MGokcayK github.com/MGokcayK
     Create : 24 / 03 / 2020
-    Update : 24 / 08 / 2020
-                Edit dtype to float32.
+    Update : 02 / 09 / 2020
+                Add append ops.
 """
 
 import numpy as np
@@ -820,4 +820,35 @@ def dropout(t: 'Tensor', p: float) -> 'Tensor':
 
         depends_on.append(T.Dependency(t, grad_fn_dropout, ops_name))
     
+    return T.Tensor(value, have_grad, depends_on)
+
+
+
+def append(t1: 'Tensor', t2: 'Tensor', axis=None) -> 'Tensor':
+    t1_shape = t1.shape
+    t2_shape = t2.shape
+    value = np.append(t1.value, t2.value, axis)
+    have_grad = t1.have_grad or t2.have_grad
+    ops_name = '_append'
+
+    depends_on: List[Dependency] = []
+
+    if t1.have_grad:
+        dim = np.arange(t1.value.ndim) # dimension
+        ind = [] 
+        [ind.append(slice(0,t1_shape[d])) for d in dim] # slice index
+        def grad_fn_append1(grad: np.ndarray) -> np.ndarray:
+            return grad[tuple(ind)]
+        
+        depends_on.append(T.Dependency(t1, grad_fn_append1, ops_name))
+
+    if t2.have_grad:
+        dim = np.arange(t2.value.ndim) # dimension
+        ind2 = []
+        [ind2.append(slice(-t2_shape[d]+value.shape[d],value.shape[d] )) for d in dim] #slice index
+        def grad_fn_append2(grad: np.ndarray) -> np.ndarray:
+            return grad[tuple(ind2)]
+        
+        depends_on.append(T.Dependency(t2, grad_fn_append2, ops_name))
+
     return T.Tensor(value, have_grad, depends_on)

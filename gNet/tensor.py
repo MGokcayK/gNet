@@ -44,11 +44,12 @@
      - arctan
      - abs
      - dropout
+     - append
 
     Author : @MGokcayK github.com/MGokcayK
     Create : 24 / 03 / 2020
-    Update : 24 / 08 / 2020
-                Edit dtype to float32.
+    Update : 02 / 09 / 2020
+                Add append ops.
 """
 
 
@@ -1325,7 +1326,7 @@ def dot(t1: Tensor, t2: Tensor, axes=None) -> Tensor:
         -----
         It is very similar to matmul ops. Dot is more quicker.
     """
-    return t_ops.dot(make_tensor(t1), make_tensor(t2))
+    return t_ops.dot(make_tensor(t1), make_tensor(t2), axes)
 
 
 
@@ -1482,3 +1483,29 @@ def dropout(t: Tensor, p = 0.) -> Tensor:
         Partial derivative is depend on calling method of `backward` like y.backward(). 
     """
     return t_ops.dropout(make_tensor(t), p)
+
+
+def append(t1: Tensor, t2: Tensor, axis=None) -> Tensor:
+    """
+        Appending two `Tensor`. Also it is calculate its gradient
+        of operatation if tensor have_grad = True.
+
+        Arguments:
+        ----------
+
+        t1 : Tensor
+
+        t2 : Tensor
+
+        axis : Append axis
+
+        For example:
+        -----------
+
+        y = append(a, b)
+
+        If a.have_grad = True => a.grad can be calculated by calling y.backward().
+        It is same for b. 
+    """
+    return t_ops.append(make_tensor(t1), make_tensor(t2), axis)
+

@@ -16,14 +16,15 @@
         - AveragePool3D
         - Dropout
         - Batch Normalization
+        - SimpleRNN
 
     Layer should be used with Model Class's add method. Rest of the calculation should be done 
     by NN structure.
 
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
-    Update : 01 / 09 / 2020
-                Fixing bias update.
+    Update : 02 / 09 / 2020
+                Adding SimpleRNN layer and arange some input args.
 """
 
 # import required modules
@@ -350,6 +351,242 @@ class Flatten(Layer):
 
 
 
+class Activation(Layer):
+    """
+        Activation layer implementation. Activate the previous layer outputs.
+
+        Arguments for initialization :
+        ------------------------------
+
+        activation_function     : Activation function of layer.
+            >>> type            : str or custom activation function
+            >>> Default         : None
+    """
+    def __init__(self, activation_function=None, **kwargs):
+        super(Activation, self).__init__(**kwargs)
+        if activation_function == None:
+            activation_function = 'none'
+        self._activation = activation_function
+
+    def __call__(self, params) -> None:
+        """
+            Update some model and class parameters.
+        """
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('Activation Layer :' + self._activation)
+        params['activation'].append(self._activation)
+        params['#parameters'].append(0)
+        params['model_neuron'].append(params['model_neuron'][self._thisLayer - 1])
+        params['layer_output_shape'].append(params['layer_output_shape'][self._thisLayer - 1])
+
+    def _init_trainable(self, params):
+        # Activation layer has no initialized parameters. Thus, pass it.
+        pass
+
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of activation layer.
+        '''
+        return self._actFuncCaller[self._activation].activate(inputs)
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer. This layer do not have regularizable parameter.
+        """
+        return T.Tensor(0.)
+
+
+
+class Conv1D(Layer):
+    """
+        Conv1D layer implementation. Conv2D implementation done by myself. 
+        Results compared with Tensorflows' `tf.nn.conv1D` operation. Same input and
+        kernel (difference is channel order) gives equal output with corresponding
+        channel order.
+
+        Note:
+        -----
+        gNet use `channel first` approach. Therefore, make sure that your data have `channel first` shape.
+
+        Arguments for initialization :
+        ------------------------------
+
+        filter              : Number of filter.
+            >>> type        : int
+            >>> Default     : 1
+
+        kernel              : Size of kernel (Width). It should declared seperately.
+            >>> type        : int
+            >>> Default     : 1
+
+        stride              : Stride of kernel (Height, Width). It should declared seperately.
+            >>> type        : int
+            >>> Default     : 1
+
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Width`. 
+            >>> type        : string
+            >>> Default     : 'valid'
+
+        kernel_initializer  : Layer's kernel initialization method.
+            >>> type        : str or custom initializer class
+            >>> Default     : 'xavier_uniform'
+
+        bias_initializer    : Layer's bias's initialization method.
+            >>> type        : str or custom initializer class
+            >>> Default     : 'zeros_init'
+
+        kernel_regularizer  : Regularizer method of kernels of layer.
+            >>> type        : regularizer class
+            >>> Default     
+
+        bias_regularizer    : Regularizer method of biases of layer.
+            >>> type        : regularizer class
+            >>> Default     : None
+
+        bias                : Bool of using bias during calculation.
+            >>> type        : bool
+            >>> Default     : True
+
+        input_shape         : If Conv1D is first layer of model, input_shape should be declared.
+                            Shape will be in form of (channel, width).
+            >>> type        : bool
+            >>> Default     : None
+
+        Arguments for compute method is tensor of previous method in proper size.
+
+        Its compute method calculation based on flatten local space of input and kernels then 
+        stored as 2D array. After making 2D array, by using dot product, calculation of all 
+        convolution can be done. Then, reshaping result to proper size. 
+    """
+    def __init__(self,
+                filter = 1,
+                kernel = 1,
+                stride = 1,
+                padding = 'valid',
+                kernel_initializer = 'xavier_uniform',
+                bias_initializer = 'zeros_init',
+                kernel_regularizer = None,
+                bias_regularizer = None,
+                use_bias = True,
+                input_shape = None,
+                **kwargs):
+        super(Conv1D, self).__init__(**kwargs)
+        assert np.array(filter).size == 1, 'Make sure that filter size of Conv1D has 1 dimension such as 32, get : ' + str(filter)
+        assert np.array(kernel).size == 1, 'Make sure that kernel size of Conv1D has 1 dimension such as 2, get : ' + str(kernel)
+        assert np.array(stride).size == 1, 'Make sure that stride size of Conv1D has 1 dimension such as 2, get : ' + str(stride)
+        self._input_shape = input_shape
+        self._filter = filter
+        self._K = kernel
+        self._stride = stride
+        self._padding = padding.lower()
+        self._bias = use_bias
+        self._initialize_method = kernel_initializer
+        self._bias_initialize_method = bias_initializer
+        self._set_initializer()
+        self._kernel_regularizer = kernel_regularizer
+        self._bias_regularizer = bias_regularizer
+
+    def __call__(self, params) -> None:
+        '''
+            Update of some of model parameters and class parameters.
+        '''
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('Conv1D')
+        params['activation'].append('none')
+        params['#parameters'].append(self._filter * self._K + self._filter)
+
+        # If Conv1D layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            assert len(self._input_shape) == 2, 'Make sure that input of Conv1D has 2 dimension without batch such as (1,28).'
+            # get channel, width and height of data
+            self._C, self._W = self._input_shape
+        else:
+            # Conv1D layer is not first layer. So get channel and width 
+            # of data from previous layer output shape
+            assert self._thisLayer != 0, 'First layer of Conv1D should have input_shape!'
+            self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
+
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self._O =  int(np.ceil(self._W / self._stride ))
+            pd_w = max((self._O - 1) * self._stride + self._K - self._W, 0) # width padding
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+        else:
+            pd_left, pd_right = 0, 0
+            self._O =  int((self._W - self._K ) / self._stride + 1)
+
+        self._P = (pd_left, pd_right)
+
+        self._output_shape = (self._filter, self._O)
+
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add flattened layer neuron number to model params
+        params['model_neuron'].append(self._filter)
+
+        self._init_trainable(params)
+
+    def _init_trainable(self, params):
+        '''
+            Initialization of Conv1D layer's trainable variables.
+        '''
+        # create kernel and bias
+        _k_shape = (self._filter, self._C, self._K)
+        _b_shape = (self._filter, 1)
+        _K, _b = self._get_inits(_k_shape, _b_shape)
+        # make kernels as  tensor
+        _K = T.Tensor(_K.astype(np.float32), have_grad=True)
+        # make biases as tensor
+        _b = T.Tensor(_b.astype(np.float32), have_grad=True)
+        # add them to trainable list
+        self._trainable.append(_K)
+        self._trainable.append(_b)
+
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of Conv1D layer.
+        '''
+        # getting input shapes separately
+        N, C, W = inputs.shape
+        # padding 
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[0], self._P[1])), \
+                    mode='constant', constant_values=0)
+        # location of local space
+        i = conv_util.get_conv1D_indices(self._K, self._stride, self._O)
+        # get local spaces of inputs
+        value = inputs[:, :, i].value
+        # flat the local spaces
+        value = value.transpose(1,3,2,0).reshape(self._K * self._C , -1)
+        # dot product of kernels and local spaces
+        inputs = T.dot(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value))
+        # adding if use_bias is true
+        if self._bias:
+            inputs += self._trainable[1]
+        # reshape dot product to output shape
+        inputs = T.reshape(inputs, (self._filter, self._O, N))
+        # arrange dimensions
+        inputs = T.transpose(inputs, (2, 0, 1))
+        return inputs
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer.
+        """
+        _res = T.Tensor(0.)
+        if self._kernel_regularizer:
+            _res += self._kernel_regularizer.compute(self._trainable[0])
+        if self._bias_regularizer:
+            _res += self._bias_regularizer.compute(self._trainable[1])
+        return _res
+
+
+
 class Conv2D(Layer):
     """
         Conv2D layer implementation. Conv2D implementation done by im2col methods 
@@ -379,7 +616,7 @@ class Conv2D(Layer):
             >>> type        : string
             >>> Default     : 'valid'
 
-        initialize_method   : Layer initialization method.
+        kernel_initializer  : Layer's kernel initialization method.
             >>> type        : str or custom initializer class
             >>> Default     : 'xavier_uniform'
 
@@ -415,7 +652,7 @@ class Conv2D(Layer):
                 kernel = (1,1),
                 stride = (1,1),
                 padding = 'valid',
-                initialize_method = 'xavier_uniform',
+                kernel_initializer = 'xavier_uniform',
                 bias_initializer = 'zeros_init',
                 kernel_regularizer = None,
                 bias_regularizer = None,
@@ -434,7 +671,7 @@ class Conv2D(Layer):
         self._stride_col = stride[1]
         self._padding = padding.lower()
         self._bias = use_bias
-        self._initialize_method = initialize_method
+        self._initialize_method = kernel_initializer
         self._bias_initialize_method = bias_initializer
         self._set_initializer()
         self._kernel_regularizer = kernel_regularizer
@@ -547,43 +784,319 @@ class Conv2D(Layer):
 
 
 
-class Activation(Layer):
+class Conv3D(Layer):
     """
-        Activation layer implementation. Activate the previous layer outputs.
+        Conv3D layer implementation. Conv3D implementation done by @Author based on Conv2D.
+
+        Note:
+        -----
+        gNet use `channel first` approach. Therefore, make sure that your data have `channel first` shape.
 
         Arguments for initialization :
         ------------------------------
 
-        activation_function     : Activation function of layer.
-            >>> type            : str or custom activation function
-            >>> Default         : None
+        filter              : Number of filter.
+            >>> type        : int
+            >>> Default     : 1
+
+        kernel              : Size of kernel (Height, Width, Depth). It should declared seperately.
+            >>> type        : tuple
+            >>> Default     : (1,1,1)
+
+        stride              : Stride of kernel (Height, Width, Depth). It should declared seperately.
+            >>> type        : tuple
+            >>> Default     : (1,1,1)
+
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Height`, `Width`
+            and `Depth`. 
+            >>> type        : string
+            >>> Default     : 'valid'
+
+        kernel_initializer  : Layer's kernel initialization method.
+            >>> type        : str or custom initializer class
+            >>> Default     : 'xavier_uniform'
+
+        bias_initializer    : Layer's bias's initialization method.
+            >>> type        : str or custom initializer class
+            >>> Default     : 'zeros_init'
+
+        kernel_regularizer  : Regularizer method of kernels of layer.
+            >>> type        : regularizer class
+            >>> Default     
+
+        bias_regularizer    : Regularizer method of biases of layer.
+            >>> type        : regularizer class
+            >>> Default     : None
+
+        bias                : Bool of using bias during calculation.
+            >>> type        : bool
+            >>> Default     : True
+
+        input_shape         : If Conv3D is first layer of model, input_shape should be declared.
+                            Shape will be in form of (channel, depth, height, width).
+            >>> type        : tuple
+            >>> Default     : None
+
+        Arguments for compute method is tensor of previous method in proper size.
+
+        Its compute method calculation based on flatten local space of input and kernels then 
+        stored as 2D array. After making 2D array, by using dot product, calculation of all 
+        convolution can be done. Then, reshaping result to proper size. 
     """
-    def __init__(self, activation_function=None, **kwargs):
-        super(Activation, self).__init__(**kwargs)
-        if activation_function == None:
-            activation_function = 'none'
-        self._activation = activation_function
+    def __init__(self,
+                filter = 1,
+                kernel = (1,1,1),
+                stride = (1,1,1),
+                padding = 'valid',
+                kernel_initializer = 'xavier_uniform',
+                bias_initializer = 'zeros_init',
+                kernel_regularizer = None,
+                bias_regularizer = None,
+                use_bias = True,
+                input_shape = None,
+                **kwargs):
+        super(Conv3D, self).__init__(**kwargs)
+        assert np.array(filter).size == 1, 'Make sure that filter size of Conv3D has 1 dimension such as 32, get : ' + str(filter)
+        assert np.array(kernel).size == 3, 'Make sure that kernel size of Conv3D has 3 dimension such as (2,2,2), get : ' + str(kernel)
+        assert np.array(stride).size == 3, 'Make sure that stride size of Conv3D has 3 dimension such as (2,2,2), get : ' + str(stride)
+        self._input_shape = input_shape
+        self._filter = filter
+        self._K_shape = kernel
+        self._stride = stride
+        self._padding = padding.lower()
+        self._bias = use_bias
+        self._initialize_method = kernel_initializer
+        self._bias_initialize_method = bias_initializer
+        self._set_initializer()
+        self._kernel_regularizer = kernel_regularizer
+        self._bias_regularizer = bias_regularizer
 
     def __call__(self, params) -> None:
-        """
-            Update some model and class parameters.
-        """
+        '''
+            Update of some of model parameters and class parameters.
+        '''
         self._thisLayer = params['layer_number']
-        params['layer_name'].append('Activation Layer :' + self._activation)
-        params['activation'].append(self._activation)
-        params['#parameters'].append(0)
-        params['model_neuron'].append(params['model_neuron'][self._thisLayer - 1])
-        params['layer_output_shape'].append(params['layer_output_shape'][self._thisLayer - 1])
+        params['layer_name'].append('Conv3D')
+        params['activation'].append('none')
+
+        # If Conv3D layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            assert len(self._input_shape) == 4, 'Make sure that input of Conv3D has 4 dimension without batch such as (3,10,28,28).'
+            # get channel, width and height of data
+            self._C, self._D, self._H, self._W = self._input_shape
+        else:
+            # Conv3D layer is not first layer. So get channel, depth, width and height
+            # of data from previous layer output shape
+            assert self._thisLayer != 0, 'First layer of Conv3D should have input_shape!'
+            self._C, self._D, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
+
+        params['#parameters'].append(self._filter * self._K_shape[0] * self._K_shape[1] * self._K_shape[2] * self._C + self._filter)
+
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self.H_out =  int(np.ceil(self._H / self._stride[0] ))
+            self.W_out =  int(np.ceil(self._W / self._stride[1] ))
+            self.D_out =  int(np.ceil(self._D / self._stride[2] ))
+            pd_h = max((self.H_out - 1) * self._stride[0] + self._K_shape[0] - self._H, 0) # height padding 
+            pd_w = max((self.W_out - 1) * self._stride[1] + self._K_shape[1] - self._W, 0) # width padding
+            pd_d = max((self.D_out - 1) * self._stride[2] + self._K_shape[2] - self._D, 0) # depth padding
+            pd_top = int(pd_h / 2) # top side padding 
+            pd_bot = int(pd_h - pd_top) # bottom side padding 
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+            pd_front = int(pd_d // 2) # front side padding 
+            pd_back = int(pd_d - pd_front) # back side padding 
+        else:
+            pd_top, pd_bot, pd_left, pd_right, pd_front, pd_back = 0, 0, 0, 0, 0, 0 
+            self.H_out =  int((self._H - self._K_shape[0] ) / self._stride[0] + 1)
+            self.W_out =  int((self._W - self._K_shape[1] ) / self._stride[1] + 1)
+            self.D_out =  int((self._D - self._K_shape[2] ) / self._stride[2] + 1)
+        
+        
+        self._P = ((pd_top, pd_bot), (pd_left, pd_right), (pd_front, pd_back))     
+        
+
+        self._output_shape = (self._filter, self.D_out, self.H_out, self.W_out)
+
+        
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add flattened layer neuron number to model params
+        params['model_neuron'].append(self._filter)
+
+        self._init_trainable(params)
 
     def _init_trainable(self, params):
-        # Activation layer has no initialized parameters. Thus, pass it.
+        '''
+            Initialization of Conv3D layer's trainable variables.
+        '''
+        # create kernel and bias
+        _k_shape = (self._filter, self._C, self._K_shape[2], self._K_shape[0], self._K_shape[1])
+        _b_shape = (self._filter, 1)
+        _K, _b = self._get_inits(_k_shape, _b_shape)
+        # make kernels as  tensor
+        _K = T.Tensor(_K.astype(np.float32), have_grad=True)
+        # make biases as tensor
+        _b = T.Tensor(_b.astype(np.float32), have_grad=True)
+        # add them to trainable list
+        self._trainable.append(_K)
+        self._trainable.append(_b)
+
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of Conv3D layer.
+        '''
+        # getting input shapes separately
+        N, C, D, H, W = inputs.shape
+        # base_shape 
+        base_shape = inputs.shape
+        # padding 
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[2][0],self._P[2][1]),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
+                    mode='constant', constant_values=0)
+        # location of local space
+        l, k, i, j = conv_util.get_conv3D_indices(base_shape, self._K_shape, self._stride, self._output_shape)
+        # get local spaces of inputs
+        value = inputs[:,l, k, i, j].value
+        # flat the local spaces
+        value = value.transpose(1,2,0).reshape((self._K_shape[0] * self._K_shape[1] * self._K_shape[2] * C, -1))
+        # dot product of kernels and local spaces
+        inputs = T.dot(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value)  )
+        # adding if use_bias is true
+        if self._bias:
+            inputs += self._trainable[1]
+        # reshape dot product to output shape
+        inputs = T.reshape(inputs, (self._filter, self.D_out, self.H_out, self.W_out, N))
+        # arrange dimensions
+        inputs = T.transpose(inputs, (4, 0, 1, 2, 3))
+        return inputs
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer.
+        """
+        _res = T.Tensor(0.)
+        if self._kernel_regularizer:
+            _res += self._kernel_regularizer.compute(self._trainable[0])
+        if self._bias_regularizer:
+            _res += self._bias_regularizer.compute(self._trainable[1])
+        return _res
+
+
+
+class MaxPool1D(Layer):
+    """
+        MaxPool1D layer implementation implemented by myself based on MaxPool2D.
+        
+        MaxPooling is getting most dominant feature of data.
+
+        Arguments for initialization :
+        ------------------------------
+
+        kernel              : Size of kernel Width.
+            >>> type        : int
+            >>> Default     : 2
+
+        stride              : Stride of kernel Width
+            >>> type        : int
+            >>> Default     : 2
+        
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Width`. 
+            >>> type        : string
+            >>> Default     : 'valid'
+
+        input_shape         : If MaxPool1D is first layer of model, input_shape should be declared.
+                            Shape will be in form of (channel, width).
+            >>> type        : tuple
+            >>> Default     : None
+
+        Implementation done by finding max values index and getting them.
+    """
+    def __init__(self,
+                kernel = 2,
+                stride = 2,
+                padding = 'valid',
+                input_shape = None,
+                **kwargs):
+        super(MaxPool1D, self).__init__(**kwargs)
+        assert np.array(kernel).size == 1, 'Make sure that kernel size of MaxPool1D has 1 dimension such as 2, get : ' + str(kernel)
+        assert np.array(stride).size == 1, 'Make sure that stride size of MaxPool1D has 1 dimension such as 2, get : ' + str(stride)
+        self._input_shape = input_shape
+        self._K = kernel
+        self._stride = stride
+        self._padding = padding.lower()
+
+    def __call__(self, params) -> None:
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('MaxPool1D')
+        params['activation'].append('none')
+        params['#parameters'].append(0)
+
+        # If MaxPool1D layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            # get channel and width of data
+            self._C, self._W = self._input_shape
+        else:
+            # MaxPool1D layer is not first layer. So get channel and width 
+            # of data from previous layer output shape
+            self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
+
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self._O =  int(np.ceil(self._W / self._stride ))
+            pd_w = max((self._O - 1) * self._stride + self._K - self._W, 0) # width padding
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+        else:
+            pd_left, pd_right = 0, 0
+            self._O =  int((self._W - self._K ) / self._stride + 1)
+        
+        self._P = (pd_left, pd_right)
+
+        self._output_shape = (self._C, self._O)
+
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add channel number to layer neuron number into model params
+        params['model_neuron'].append(self._C)
+
+    def _init_trainable(self, params):
+        # MaxPool1D layer has no initialized parameters. Thus, pass it.
         pass
 
     def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
         '''
-            Computation of activation layer.
+            Computation of MaxPool1D layer.
         '''
-        return self._actFuncCaller[self._activation].activate(inputs)
+        # padding 
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[0], self._P[1])), \
+                    mode='constant', constant_values=0)
+        # gettin input shapes separately
+        N, C, W = inputs.shape
+        # findin pooling locations
+        i = conv_util.get_conv1D_indices(self._K, self._stride, self._O)
+        # getting local spaces
+        inputs = inputs[:, :, i]
+        # arrange dimensions
+        inputs = T.transpose(inputs,(3,0,1,2))
+        # flat local spaces
+        inputs = T.reshape(inputs, (self._K, -1))         
+        # find max values' index 
+        max_idx = np.argmax(inputs.value, axis=0)
+        # get max values
+        inputs = inputs[max_idx, range(max_idx.size)] 
+        ## reshape it to output
+        inputs = T.reshape(inputs, (N, -1, self._O))
+        return inputs
 
     def regularize(self) -> T.Tensor:
         """
@@ -722,7 +1235,262 @@ class MaxPool2D(Layer):
             Regularization of layer. This layer do not have regularizable parameter.
         """
         return T.Tensor(0.)
+
+
+
+class MaxPool3D(Layer):
+    """
+        MaxPool3D layer implemented by @Author based on MaxPool2D.
+
+        MaxPooling is getting most dominant feature of data.
+
+        Arguments for initialization :
+        ------------------------------
+
+        kernel              : Size of kernel (Height, Width, Depth). It should declared seperately.
+            >>> type        : tuple
+            >>> Default     : (2,2,2)
+
+        stride              : Stride of kernel (Height, Width, Depth). It should declared seperately.
+            >>> type        : tuple
+            >>> Default     : (2,2,2)
+
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Height`, `Width`
+            and `Depth`. 
+            >>> type        : string
+            >>> Default     : 'valid'
+
+        input_shape         : If MaxPool3D is first layer of model, input_shape should be declared.
+                            Shape will be in form of (channel, depth, height, width).
+            >>> type        : tuple
+            >>> Default     : None
+
+        Implementation done by finding max values index and getting them.
+    """
+    def __init__(self,
+                kernel = (2,2,2),
+                stride = (2,2,2),
+                padding = 'valid',
+                input_shape = None,
+                **kwargs):
+        super(MaxPool3D, self).__init__(**kwargs)
+        assert np.array(kernel).size == 3, 'Make sure that kernel size of MaxPool3D has 3 dimension such as (2,2,2), get : ' + str(kernel)
+        assert np.array(stride).size == 3, 'Make sure that stride size of MaxPool3D has 3 dimension such as (2,2,2), get : ' + str(stride)
+        self._input_shape = input_shape
+        self._K_shape = kernel
+        self._stride = stride
+        self._padding = padding.lower()
+
+    def __call__(self, params) -> None:
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('MaxPool3D')
+        params['activation'].append('none')
+        params['#parameters'].append(0)
+
+        # If MaxPool3D layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            # get channel, depth, width and height of data
+            self._C, self._D, self._H, self._W = self._input_shape
+        else:
+            # MaxPool3D layer is not first layer. So get channel, width and height
+            # of data from previous layer output shape
+            self._C, self._D, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
+
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self.H_out =  int(np.ceil(self._H / self._stride[0] ))
+            self.W_out =  int(np.ceil(self._W / self._stride[1] ))
+            self.D_out =  int(np.ceil(self._D / self._stride[2] ))
+            print(self.H_out, self.W_out, self.D_out)
+            pd_h = max((self.H_out - 1) * self._stride[0] + self._K_shape[0] - self._H, 0) # height padding 
+            pd_w = max((self.W_out - 1) * self._stride[1] + self._K_shape[1] - self._W, 0) # width padding
+            pd_d = max((self.D_out - 1) * self._stride[2] + self._K_shape[2] - self._D, 0) # depth padding
+            pd_top = int(pd_h / 2) # top side padding 
+            pd_bot = int(pd_h - pd_top) # bottom side padding 
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+            pd_front = int(pd_d // 2) # front side padding 
+            pd_back = int(pd_d - pd_front) # back side padding 
+        else:
+            pd_top, pd_bot, pd_left, pd_right, pd_front, pd_back = 0, 0, 0, 0, 0, 0 
+            self.H_out =  int((self._H - self._K_shape[0] ) / self._stride[0] + 1)
+            self.W_out =  int((self._W - self._K_shape[1] ) / self._stride[1] + 1)
+            self.D_out =  int((self._D - self._K_shape[2] ) / self._stride[2] + 1)
         
+        
+        self._P = ((pd_top, pd_bot), (pd_left, pd_right), (pd_front, pd_back))   
+
+        self._output_shape = (self._C, self.D_out, self.H_out, self.W_out)
+
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add channel number to layer neuron number into model params
+        params['model_neuron'].append(self._C)
+
+    def _init_trainable(self, params):
+        # MaxPool3D layer has no initialized parameters. Thus, pass it.
+        pass
+
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of MaxPool3D layer.
+        '''
+        # apply padding
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[2][0],self._P[2][1]),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
+                    mode='constant', constant_values=0)
+        # gettin input shapes separately
+        N, C, D, H, W = inputs.shape
+        # reshape inputs
+        inputs = T.reshape(inputs, (N * C, 1, D, H, W))
+        # findin pooling locations
+        l, k, i, j = conv_util.get_conv3D_indices(inputs.shape, self._K_shape, self._stride, self._output_shape)
+        # getting local spaces
+        inputs = inputs[:,l, k,i,j]
+        # arrange dimensions
+        inputs = T.transpose(inputs,(1,2,0))
+        # flat local spaces
+        inputs = T.reshape(inputs, (self._K_shape[0] * self._K_shape[1] * self._K_shape[2] , -1)) 
+        # find max values' index 
+        max_idx = np.argmax(inputs.value, axis=0)
+        # get max values
+        inputs = inputs[max_idx, range(max_idx.size)] 
+        # reshape it to output
+        inputs = T.reshape(inputs, (self.D_out, self.H_out, self.W_out, N, C))
+        # arrange dimensions
+        inputs = T.transpose(inputs, (3,4,0,1,2))
+        return inputs
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer. This layer do not have regularizable parameter.
+        """
+        return T.Tensor(0.)
+
+
+
+class AveragePool1D(Layer):
+    """
+        AveragePool1D layer implementation which done by myself based on AveragePool2D.
+
+        AveragePool is getting average feature of data.
+
+        Arguments for initialization :
+        ------------------------------
+
+        kernel                  : Size of kernel Width. 
+            >>> type            : int
+            >>> Default         : 2
+
+        stride                  : Stride of kernel Width. 
+            >>> type            : int
+            >>> Default         : 2
+
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Width`. 
+            >>> type        : string
+            >>> Default     : 'valid'
+
+        input_shape             : If AveragePool1D is first layer of model, input_shape should be declared.
+                                Shape will be in form of (channel, width).
+            >>> type            : tuple
+            >>> Default         : None
+
+        Implementation done by finding average values.
+    """
+    def __init__(self,
+                kernel = 2,
+                stride = 2,
+                padding = 'valid',
+                input_shape = None,
+                **kwargs):
+        super(AveragePool1D, self).__init__(**kwargs)
+        assert np.array(kernel).size == 1, 'Make sure that kernel size of AveragePool1D has 1 dimension such as 2, get : ' + str(kernel)
+        assert np.array(stride).size == 1, 'Make sure that stride size of AveragePool1D has 1 dimension such as 2, get : ' + str(stride)
+        self._input_shape = input_shape
+        self._K = kernel
+        self._stride = stride
+        self._padding = padding.lower()
+        
+    def __call__(self, params) -> None:
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('AveragePool1D')
+        params['activation'].append('none')
+        params['#parameters'].append(0)
+
+        # If AveragePool1D layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            # get channel and width of data
+            self._C, self._W = self._input_shape
+        else:
+            # AveragePool1D layer is not first layer. So get channel and width 
+            # of data from previous layer output shape
+            self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
+
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self._O =  int(np.ceil(self._W / self._stride ))
+            pd_w = max((self._O - 1) * self._stride + self._K - self._W, 0) # width padding
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+            print(pd_w, pd_left, pd_right)
+        else:
+            pd_left, pd_right = 0, 0
+            self._O =  int((self._W - self._K ) / self._stride + 1)
+        
+        self._P = (pd_left, pd_right)
+        
+        self._output_shape = (self._C, self._O)
+
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add channel number to layer neuron number into model params
+        params['model_neuron'].append(self._C)
+
+    def _init_trainable(self, params):
+        # AveragePool1D layer has no initialized parameters. Thus, pass it.
+        pass
+
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of AveragePool1D layer.
+        '''
+        # padding 
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[0], self._P[1])), \
+                    mode='constant', constant_values=0)
+        # gettin input shapes separately
+        N, C, W = inputs.shape
+        #print(inputs)
+        # findin pooling locations
+        i = conv_util.get_conv1D_indices(self._K, self._stride, self._O)
+        # getting local spaces
+        inputs = inputs[:, :, i]
+        # arrange dimensions
+        inputs = T.transpose(inputs,(3,0,1,2))
+        # flat local spaces
+        inputs = T.reshape(inputs, (self._K, -1))         
+        # get mean values 
+        #print(inputs)
+        inputs = T.mean(inputs, axis=0)
+        #print(inputs)
+        # reshape it to output
+        inputs = T.reshape(inputs, (N, -1, self._O))
+        return inputs
+        
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer. This layer do not have regularizable parameter.
+        """
+        return T.Tensor(0.) 
+
 
 
 class AveragePool2D(Layer):
@@ -852,7 +1620,140 @@ class AveragePool2D(Layer):
             Regularization of layer. This layer do not have regularizable parameter.
         """
         return T.Tensor(0.)
+
+
+
+class AveragePool3D(Layer):
+    """
+        AveragePool3D layer implemented by @Author based on AveragePool2D.
+
+        AveragePool is getting average feature of data.
+
+        Arguments for initialization :
+        ------------------------------
+
+        kernel              : Size of kernel (Height, Width, Depth). It should declared seperately.
+            >>> type        : tuple
+            >>> Default     : (2,2,2)
+
+        stride              : Stride of kernel (Height, Width, Depth). It should declared seperately.
+            >>> type        : tuple
+            >>> Default     : (2,2,2)
+
+        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
+            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Height`, `Width`
+            and `Depth`. 
+            >>> type        : string
+            >>> Default     : 'valid'
+
+        input_shape         : If AveragePool3D is first layer of model, input_shape should be declared.
+                            Shape will be in form of (channel, depth, height, width).
+            >>> type        : tuple
+            >>> Default     : None
+
+        Implementation done by finding max values index and getting them.
+    """
+    def __init__(self,
+                kernel = (2,2,2),
+                stride = (2,2,2),
+                padding = 'valid',
+                input_shape = None,
+                **kwargs):
+        super(AveragePool3D, self).__init__(**kwargs)
+        assert np.array(kernel).size == 3, 'Make sure that kernel size of AveragePool3D has 3 dimension such as (2,2,2), get : ' + str(kernel)
+        assert np.array(stride).size == 3, 'Make sure that stride size of AveragePool3D has 3 dimension such as (2,2,2), get : ' + str(stride)
+        self._input_shape = input_shape
+        self._K_shape = kernel
+        self._stride = stride
+        self._padding = padding.lower()
+
+    def __call__(self, params) -> None:
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('AveragePool3D')
+        params['activation'].append('none')
+        params['#parameters'].append(0)
+
+        # If AveragePool3D layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            # get channel, depth, width and height of data
+            self._C, self._D, self._H, self._W = self._input_shape
+        else:
+            # AveragePool3D layer is not first layer. So get channel, width and height
+            # of data from previous layer output shape
+            self._C, self._D, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
+
+        if self._padding == 'same':
+            # To handle even size kernel padding, we put more constant to right and bottom side 
+            # of axis like Tensorflow. 
+            # Therefore we need to specify axis's each side padding seperately.
+            self.H_out =  int(np.ceil(self._H / self._stride[0] ))
+            self.W_out =  int(np.ceil(self._W / self._stride[1] ))
+            self.D_out =  int(np.ceil(self._D / self._stride[2] ))
+            print(self.H_out, self.W_out, self.D_out)
+            pd_h = max((self.H_out - 1) * self._stride[0] + self._K_shape[0] - self._H, 0) # height padding 
+            pd_w = max((self.W_out - 1) * self._stride[1] + self._K_shape[1] - self._W, 0) # width padding
+            pd_d = max((self.D_out - 1) * self._stride[2] + self._K_shape[2] - self._D, 0) # depth padding
+            pd_top = int(pd_h / 2) # top side padding 
+            pd_bot = int(pd_h - pd_top) # bottom side padding 
+            pd_left = int(pd_w / 2) # left side paddding 
+            pd_right = int(pd_w - pd_left) # rights side padding 
+            pd_front = int(pd_d // 2) # front side padding 
+            pd_back = int(pd_d - pd_front) # back side padding 
+        else:
+            pd_top, pd_bot, pd_left, pd_right, pd_front, pd_back = 0, 0, 0, 0, 0, 0 
+            self.H_out =  int((self._H - self._K_shape[0] ) / self._stride[0] + 1)
+            self.W_out =  int((self._W - self._K_shape[1] ) / self._stride[1] + 1)
+            self.D_out =  int((self._D - self._K_shape[2] ) / self._stride[2] + 1)
         
+        
+        self._P = ((pd_top, pd_bot), (pd_left, pd_right), (pd_front, pd_back))   
+
+        self._output_shape = (self._C, self.D_out, self.H_out, self.W_out)
+
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add channel number to layer neuron number into model params
+        params['model_neuron'].append(self._C)
+
+    def _init_trainable(self, params):
+        # AveragePool3D layer has no initialized parameters. Thus, pass it.
+        pass
+
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of AveragePool3D layer.
+        '''
+        # apply padding
+        if self._padding == 'same':
+            inputs.value = np.pad(inputs.value, \
+                ((0,0),(0,0),(self._P[2][0],self._P[2][1]),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
+                    mode='constant', constant_values=0)
+        # gettin input shapes separately
+        N, C, D, H, W = inputs.shape
+        # reshape inputs
+        inputs = T.reshape(inputs, (N * C, 1, D, H, W))
+        # findin pooling locations
+        l, k, i, j = conv_util.get_conv3D_indices(inputs.shape, self._K_shape, self._stride, self._output_shape)
+        # getting local spaces
+        inputs = inputs[:,l, k,i,j]
+        # arrange dimensions
+        inputs = T.transpose(inputs,(1,2,0))
+        # flat local spaces
+        inputs = T.reshape(inputs, (self._K_shape[0] * self._K_shape[1] * self._K_shape[2] , -1)) 
+        # find mean values through axis 0
+        inputs = T.mean(inputs, axis=0) 
+        # reshape it to output
+        inputs = T.reshape(inputs, (self.D_out, self.H_out, self.W_out, N, C))
+        # arrange dimensions
+        inputs = T.transpose(inputs, (3,4,0,1,2))
+        return inputs
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer. This layer do not have regularizable parameter.
+        """
+        return T.Tensor(0.)
+
 
 
 class Dropout(Layer):
@@ -1126,94 +2027,92 @@ class BatchNormalization(Layer):
 
 
 
-class Conv1D(Layer):
+class SimpleRNN(Layer):
     """
-        Conv1D layer implementation. Conv2D implementation done by myself. 
-        Results compared with Tensorflows' `tf.nn.conv1D` operation. Same input and
-        kernel (difference is channel order) gives equal output with corresponding
-        channel order.
-
-        Note:
-        -----
-        gNet use `channel first` approach. Therefore, make sure that your data have `channel first` shape.
+        SimpleRNN layer implementation done by @Author.
 
         Arguments for initialization :
         ------------------------------
 
-        filter              : Number of filter.
+        cell                : Number of cell.
             >>> type        : int
             >>> Default     : 1
 
-        kernel              : Size of kernel (Width). It should declared seperately.
-            >>> type        : int
-            >>> Default     : 1
-
-        stride              : Stride of kernel (Height, Width). It should declared seperately.
-            >>> type        : int
-            >>> Default     : 1
-
-        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
-            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Width`. 
+        activation_function : Activation function of SimpleRNN method.
             >>> type        : string
-            >>> Default     : 'valid'
+            >>> Default     : 'relu'
 
-        initialize_method   : Layer initialization method.
+        initializer         : Initialize method of input kernel.
             >>> type        : str or custom initializer class
+            >>> Default     : 'xavier_uniform'
+
+        hidden_initializer  : Initialize method of hidden state kernel. 
+            >>> type        : string
             >>> Default     : 'xavier_uniform'
 
         bias_initializer    : Layer's bias's initialization method.
             >>> type        : str or custom initializer class
             >>> Default     : 'zeros_init'
 
+        return_sequences    : Returning sequencial of output. 
+            >>> type        : bool
+            >>> Default     : False
+
+        return_state        : Returning last state of layer. It used with `return_sequences=True`. 
+            It returns sequential output of layer and last state respectly.
+            >>> type        : bool
+            >>> Default     : False
+
         kernel_regularizer  : Regularizer method of kernels of layer.
             >>> type        : regularizer class
-            >>> Default     
+            >>> Default     : None
+
+        hidden_regularizer  : Regularizer method of hidden state of layer.
+            >>> type        : regularizer class
+            >>> Default     : None
 
         bias_regularizer    : Regularizer method of biases of layer.
             >>> type        : regularizer class
             >>> Default     : None
 
-        bias                : Bool of using bias during calculation.
+        use_bias                : Bool of using bias during calculation.
             >>> type        : bool
             >>> Default     : True
 
-        input_shape         : If Conv1D is first layer of model, input_shape should be declared.
-                            Shape will be in form of (channel, width).
+        input_shape         : If Conv2D is first layer of model, input_shape should be declared.
+                            Shape will be in form of (channel, height, width).
             >>> type        : bool
             >>> Default     : None
 
         Arguments for compute method is tensor of previous method in proper size.
-
-        Its compute method calculation based on flatten local space of input and kernels then 
-        stored as 2D array. After making 2D array, by using dot product, calculation of all 
-        convolution can be done. Then, reshaping result to proper size. 
     """
     def __init__(self,
-                filter = 1,
-                kernel = 1,
-                stride = 1,
-                padding = 'valid',
-                initialize_method = 'xavier_uniform',
+                cell = 1,
+                activation_function = 'relu',
+                initializer = 'xavier_uniform',
+                hidden_initializer = 'xavier_uniform',
                 bias_initializer = 'zeros_init',
+                return_sequences = False,
+                return_state = False,
                 kernel_regularizer = None,
+                hidden_regularizer = None,
                 bias_regularizer = None,
                 use_bias = True,
                 input_shape = None,
                 **kwargs):
-        super(Conv1D, self).__init__(**kwargs)
-        assert np.array(filter).size == 1, 'Make sure that filter size of Conv1D has 1 dimension such as 32, get : ' + str(filter)
-        assert np.array(kernel).size == 1, 'Make sure that kernel size of Conv1D has 1 dimension such as 2, get : ' + str(kernel)
-        assert np.array(stride).size == 1, 'Make sure that stride size of Conv1D has 1 dimension such as 2, get : ' + str(stride)
+        super(SimpleRNN, self).__init__(**kwargs)
+        self._cell = cell
         self._input_shape = input_shape
-        self._filter = filter
-        self._K = kernel
-        self._stride = stride
-        self._padding = padding.lower()
+        self._activation = activation_function
+        self._ret_seq = return_sequences
+        self._ret_sta = return_state
         self._bias = use_bias
-        self._initialize_method = initialize_method
+        self._initialize_method = initializer
+        self._hidden_initializer = hidden_initializer
         self._bias_initialize_method = bias_initializer
         self._set_initializer()
         self._kernel_regularizer = kernel_regularizer
+        self._hidden_regularizer = hidden_regularizer
         self._bias_regularizer = bias_regularizer
 
     def __call__(self, params) -> None:
@@ -1221,87 +2120,93 @@ class Conv1D(Layer):
             Update of some of model parameters and class parameters.
         '''
         self._thisLayer = params['layer_number']
-        params['layer_name'].append('Conv1D')
-        params['activation'].append('none')
-        params['#parameters'].append(self._filter * self._K + self._filter)
+        params['layer_name'].append('SimpleRNN')
+        params['activation'].append(self._activation)
 
-        # If Conv1D layer is the first layer of model, input_shape should be declared.
+        # If SimpleRNN layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
-            assert len(self._input_shape) == 2, 'Make sure that input of Conv1D has 2 dimension without batch such as (1,28).'
-            # get channel, width and height of data
-            self._C, self._W = self._input_shape
+            assert len(self._input_shape) == 2, 'Make sure that input of SimpleRNN has 2 dimension without batch such as (10,5).'
+            # get sequencial lenght and input size
+            self._seq_len, self._inp_size = self._input_shape
         else:
-            # Conv1D layer is not first layer. So get channel and width 
-            # of data from previous layer output shape
-            assert self._thisLayer != 0, 'First layer of Conv1D should have input_shape!'
-            self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
+            # SimpleRNN layer is not first layer. So get sequential lenght and input size 
+            # ofrom previous layer output shape
+            assert self._thisLayer != 0, 'First layer of SimpleRNN should have input_shape!'
+            if isinstance(params['layer_output_shape'][self._thisLayer - 1], int):
+                params['layer_output_shape'][self._thisLayer - 1] = [params['layer_output_shape'][self._thisLayer - 1]]
+            assert len(params['layer_output_shape'][self._thisLayer - 1]) == 2, 'Previous RNN layer`s `return_sequences` should be True'
+            self._seq_len, self._inp_size = params['layer_output_shape'][self._thisLayer - 1]  
 
-        if self._padding == 'same':
-            # To handle even size kernel padding, we put more constant to right and bottom side 
-            # of axis like Tensorflow. 
-            # Therefore we need to specify axis's each side padding seperately.
-            self._O =  int(np.ceil(self._W / self._stride ))
-            pd_w = max((self._O - 1) * self._stride + self._K - self._W, 0) # width padding
-            pd_left = int(pd_w / 2) # left side paddding 
-            pd_right = int(pd_w - pd_left) # rights side padding 
+        if self._ret_seq:
+            self._output_shape = (self._seq_len, self._cell)
         else:
-            pd_left, pd_right = 0, 0
-            self._O =  int((self._W - self._K ) / self._stride + 1)
+            self._output_shape = (self._cell)
 
-        self._P = (pd_left, pd_right)
-
-        self._output_shape = (self._filter, self._O)
 
         # add output shape to model params without batch_size
         params['layer_output_shape'].append(self._output_shape)
-        # add flattened layer neuron number to model params
-        params['model_neuron'].append(self._filter)
+        # add layer neuron number to model params
+        params['model_neuron'].append(self._cell)
+        # add number of parameters 
+        params['#parameters'].append(self._cell * ( self._cell + self._inp_size + 1))
 
         self._init_trainable(params)
 
     def _init_trainable(self, params):
         '''
-            Initialization of Conv1D layer's trainable variables.
+            Initialization of SimpleRNN layer's trainable variables.
         '''
-        # create kernel and bias
-        _k_shape = (self._filter, self._C, self._K)
-        _b_shape = (self._filter, 1)
-        _K, _b = self._get_inits(_k_shape, _b_shape)
-        # make kernels as  tensor
-        _K = T.Tensor(_K.astype(np.float32), have_grad=True)
-        # make biases as tensor
-        _b = T.Tensor(_b.astype(np.float32), have_grad=True)
-        # add them to trainable list
-        self._trainable.append(_K)
-        self._trainable.append(_b)
+        # create kernels and biases
+        if isinstance(self._hidden_initializer, str):
+            _init = self._hidden_initializer.lower()
+            self._hidden_init = ID[_init]()
+        else:
+            self._hidden_init = self._hidden_initializer
+        _k_hh = self._hidden_init.get_init(shape=(self._cell, self._cell)) 
+        _k_hx = self._initializer.get_init(shape=(self._inp_size, self._cell)) 
+        _b_h = self._bias_initializer.get_init(shape=(1,self._cell)) 
+        # make kernels as  tensor and add them to trainable list
+        self._trainable.append(T.Tensor(_k_hh.astype(np.float32), have_grad=True))
+        self._trainable.append(T.Tensor(_k_hx.astype(np.float32), have_grad=True))
+        self._trainable.append(T.Tensor(_b_h.astype(np.float32), have_grad=True))
 
+        
     def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
         '''
-            Computation of Conv1D layer.
+            Computation of SimpleRNN layer.
         '''
-        # getting input shapes separately
-        N, C, W = inputs.shape
-        # padding 
-        if self._padding == 'same':
-            inputs.value = np.pad(inputs.value, \
-                ((0,0),(0,0),(self._P[0], self._P[1])), \
-                    mode='constant', constant_values=0)
-        # location of local space
-        i = conv_util.get_conv1D_indices(self._K, self._stride, self._O)
-        # get local spaces of inputs
-        value = inputs[:, :, i].value
-        # flat the local spaces
-        value = value.transpose(1,3,2,0).reshape(self._K * self._C , -1)
-        # dot product of kernels and local spaces
-        inputs = T.dot(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value))
-        # adding if use_bias is true
-        if self._bias:
-            inputs += self._trainable[1]
-        # reshape dot product to output shape
-        inputs = T.reshape(inputs, (self._filter, self._O, N))
-        # arrange dimensions
-        inputs = T.transpose(inputs, (2, 0, 1))
-        return inputs
+        # initializer hidden matrix as zeros
+        h_init = ID['zeros_init']()
+        h = T.Tensor(h_init.get_init((inputs.shape[0],self._cell)))
+
+        # sequential output holder
+        return_seq = T.Tensor(np.empty((inputs.shape[0],self._cell)))
+        
+        # for each sequencial data 
+        for s in range(self._seq_len):
+            # finding value to activate
+            tmp = T.dot(inputs[:,s,:], self._trainable[1]) + T.dot(h, self._trainable[0])
+            # adding if use_bias is true 
+            if self._bias:
+                tmp += self._trainable[2]# + self._trainable[4]
+            # activate value
+            h = self._actFuncCaller[self._activation].activate(tmp)
+            # add sequential output
+            if self._ret_seq:
+                if s == 0:
+                    return_seq = h
+                else:    
+                    return_seq = T.append(return_seq, h, 0)            
+                    
+        if self._ret_seq:
+            return_seq = T.reshape(return_seq, (self._seq_len,-1, self._cell))
+            if self._ret_sta:
+                return T.transpose(return_seq, (1,0,2)), h 
+            return T.transpose(return_seq, (1,0,2))
+        else:
+            return h
+
+
 
     def regularize(self) -> T.Tensor:
         """
@@ -1310,718 +2215,11 @@ class Conv1D(Layer):
         _res = T.Tensor(0.)
         if self._kernel_regularizer:
             _res += self._kernel_regularizer.compute(self._trainable[0])
+        if self._hidden_regularizer:
+            _res += self._hidden_regularizer.compute(self._trainable[1])
         if self._bias_regularizer:
-            _res += self._bias_regularizer.compute(self._trainable[1])
+            _res += self._bias_regularizer.compute(self._trainable[2])
         return _res
 
-
-
-class MaxPool1D(Layer):
-    """
-        MaxPool1D layer implementation implemented by myself based on MaxPool2D.
-        
-        MaxPooling is getting most dominant feature of data.
-
-        Arguments for initialization :
-        ------------------------------
-
-        kernel              : Size of kernel Width.
-            >>> type        : int
-            >>> Default     : 2
-
-        stride              : Stride of kernel Width
-            >>> type        : int
-            >>> Default     : 2
-        
-        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
-            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Width`. 
-            >>> type        : string
-            >>> Default     : 'valid'
-
-        input_shape         : If MaxPool1D is first layer of model, input_shape should be declared.
-                            Shape will be in form of (channel, width).
-            >>> type        : tuple
-            >>> Default     : None
-
-        Implementation done by finding max values index and getting them.
-    """
-    def __init__(self,
-                kernel = 2,
-                stride = 2,
-                padding = 'valid',
-                input_shape = None,
-                **kwargs):
-        super(MaxPool1D, self).__init__(**kwargs)
-        assert np.array(kernel).size == 1, 'Make sure that kernel size of MaxPool1D has 1 dimension such as 2, get : ' + str(kernel)
-        assert np.array(stride).size == 1, 'Make sure that stride size of MaxPool1D has 1 dimension such as 2, get : ' + str(stride)
-        self._input_shape = input_shape
-        self._K = kernel
-        self._stride = stride
-        self._padding = padding.lower()
-
-    def __call__(self, params) -> None:
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('MaxPool1D')
-        params['activation'].append('none')
-        params['#parameters'].append(0)
-
-        # If MaxPool1D layer is the first layer of model, input_shape should be declared.
-        if self._input_shape != None:
-            # get channel and width of data
-            self._C, self._W = self._input_shape
-        else:
-            # MaxPool1D layer is not first layer. So get channel and width 
-            # of data from previous layer output shape
-            self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
-
-        if self._padding == 'same':
-            # To handle even size kernel padding, we put more constant to right and bottom side 
-            # of axis like Tensorflow. 
-            # Therefore we need to specify axis's each side padding seperately.
-            self._O =  int(np.ceil(self._W / self._stride ))
-            pd_w = max((self._O - 1) * self._stride + self._K - self._W, 0) # width padding
-            pd_left = int(pd_w / 2) # left side paddding 
-            pd_right = int(pd_w - pd_left) # rights side padding 
-        else:
-            pd_left, pd_right = 0, 0
-            self._O =  int((self._W - self._K ) / self._stride + 1)
-        
-        self._P = (pd_left, pd_right)
-
-        self._output_shape = (self._C, self._O)
-
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add channel number to layer neuron number into model params
-        params['model_neuron'].append(self._C)
-
-    def _init_trainable(self, params):
-        # MaxPool1D layer has no initialized parameters. Thus, pass it.
-        pass
-
-    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
-        '''
-            Computation of MaxPool1D layer.
-        '''
-        # padding 
-        if self._padding == 'same':
-            inputs.value = np.pad(inputs.value, \
-                ((0,0),(0,0),(self._P[0], self._P[1])), \
-                    mode='constant', constant_values=0)
-        # gettin input shapes separately
-        N, C, W = inputs.shape
-        # findin pooling locations
-        i = conv_util.get_conv1D_indices(self._K, self._stride, self._O)
-        # getting local spaces
-        inputs = inputs[:, :, i]
-        # arrange dimensions
-        inputs = T.transpose(inputs,(3,0,1,2))
-        # flat local spaces
-        inputs = T.reshape(inputs, (self._K, -1))         
-        # find max values' index 
-        max_idx = np.argmax(inputs.value, axis=0)
-        # get max values
-        inputs = inputs[max_idx, range(max_idx.size)] 
-        ## reshape it to output
-        inputs = T.reshape(inputs, (N, -1, self._O))
-        return inputs
-
-    def regularize(self) -> T.Tensor:
-        """
-            Regularization of layer. This layer do not have regularizable parameter.
-        """
-        return T.Tensor(0.)
-
-
-
-class AveragePool1D(Layer):
-    """
-        AveragePool1D layer implementation which done by myself based on AveragePool2D.
-
-        AveragePool is getting average feature of data.
-
-        Arguments for initialization :
-        ------------------------------
-
-        kernel                  : Size of kernel Width. 
-            >>> type            : int
-            >>> Default         : 2
-
-        stride                  : Stride of kernel Width. 
-            >>> type            : int
-            >>> Default         : 2
-
-        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
-            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Width`. 
-            >>> type        : string
-            >>> Default     : 'valid'
-
-        input_shape             : If AveragePool1D is first layer of model, input_shape should be declared.
-                                Shape will be in form of (channel, width).
-            >>> type            : tuple
-            >>> Default         : None
-
-        Implementation done by finding average values.
-    """
-    def __init__(self,
-                kernel = 2,
-                stride = 2,
-                padding = 'valid',
-                input_shape = None,
-                **kwargs):
-        super(AveragePool1D, self).__init__(**kwargs)
-        assert np.array(kernel).size == 1, 'Make sure that kernel size of AveragePool1D has 1 dimension such as 2, get : ' + str(kernel)
-        assert np.array(stride).size == 1, 'Make sure that stride size of AveragePool1D has 1 dimension such as 2, get : ' + str(stride)
-        self._input_shape = input_shape
-        self._K = kernel
-        self._stride = stride
-        self._padding = padding.lower()
-        
-    def __call__(self, params) -> None:
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('AveragePool1D')
-        params['activation'].append('none')
-        params['#parameters'].append(0)
-
-        # If AveragePool1D layer is the first layer of model, input_shape should be declared.
-        if self._input_shape != None:
-            # get channel and width of data
-            self._C, self._W = self._input_shape
-        else:
-            # AveragePool1D layer is not first layer. So get channel and width 
-            # of data from previous layer output shape
-            self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
-
-        if self._padding == 'same':
-            # To handle even size kernel padding, we put more constant to right and bottom side 
-            # of axis like Tensorflow. 
-            # Therefore we need to specify axis's each side padding seperately.
-            self._O =  int(np.ceil(self._W / self._stride ))
-            pd_w = max((self._O - 1) * self._stride + self._K - self._W, 0) # width padding
-            pd_left = int(pd_w / 2) # left side paddding 
-            pd_right = int(pd_w - pd_left) # rights side padding 
-            print(pd_w, pd_left, pd_right)
-        else:
-            pd_left, pd_right = 0, 0
-            self._O =  int((self._W - self._K ) / self._stride + 1)
-        
-        self._P = (pd_left, pd_right)
-        
-        self._output_shape = (self._C, self._O)
-
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add channel number to layer neuron number into model params
-        params['model_neuron'].append(self._C)
-
-    def _init_trainable(self, params):
-        # AveragePool1D layer has no initialized parameters. Thus, pass it.
-        pass
-
-    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
-        '''
-            Computation of AveragePool1D layer.
-        '''
-        # padding 
-        if self._padding == 'same':
-            inputs.value = np.pad(inputs.value, \
-                ((0,0),(0,0),(self._P[0], self._P[1])), \
-                    mode='constant', constant_values=0)
-        # gettin input shapes separately
-        N, C, W = inputs.shape
-        #print(inputs)
-        # findin pooling locations
-        i = conv_util.get_conv1D_indices(self._K, self._stride, self._O)
-        # getting local spaces
-        inputs = inputs[:, :, i]
-        # arrange dimensions
-        inputs = T.transpose(inputs,(3,0,1,2))
-        # flat local spaces
-        inputs = T.reshape(inputs, (self._K, -1))         
-        # get mean values 
-        #print(inputs)
-        inputs = T.mean(inputs, axis=0)
-        #print(inputs)
-        # reshape it to output
-        inputs = T.reshape(inputs, (N, -1, self._O))
-        return inputs
-        
-    def regularize(self) -> T.Tensor:
-        """
-            Regularization of layer. This layer do not have regularizable parameter.
-        """
-        return T.Tensor(0.) 
-
-
-
-class Conv3D(Layer):
-    """
-        Conv3D layer implementation. Conv3D implementation done by @Author based on Conv2D.
-
-        Note:
-        -----
-        gNet use `channel first` approach. Therefore, make sure that your data have `channel first` shape.
-
-        Arguments for initialization :
-        ------------------------------
-
-        filter              : Number of filter.
-            >>> type        : int
-            >>> Default     : 1
-
-        kernel              : Size of kernel (Height, Width, Depth). It should declared seperately.
-            >>> type        : tuple
-            >>> Default     : (1,1,1)
-
-        stride              : Stride of kernel (Height, Width, Depth). It should declared seperately.
-            >>> type        : tuple
-            >>> Default     : (1,1,1)
-
-        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
-            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Height`, `Width`
-            and `Depth`. 
-            >>> type        : string
-            >>> Default     : 'valid'
-
-        initialize_method   : Layer initialization method.
-            >>> type        : str or custom initializer class
-            >>> Default     : 'xavier_uniform'
-
-        bias_initializer    : Layer's bias's initialization method.
-            >>> type        : str or custom initializer class
-            >>> Default     : 'zeros_init'
-
-        kernel_regularizer  : Regularizer method of kernels of layer.
-            >>> type        : regularizer class
-            >>> Default     
-
-        bias_regularizer    : Regularizer method of biases of layer.
-            >>> type        : regularizer class
-            >>> Default     : None
-
-        bias                : Bool of using bias during calculation.
-            >>> type        : bool
-            >>> Default     : True
-
-        input_shape         : If Conv3D is first layer of model, input_shape should be declared.
-                            Shape will be in form of (channel, depth, height, width).
-            >>> type        : tuple
-            >>> Default     : None
-
-        Arguments for compute method is tensor of previous method in proper size.
-
-        Its compute method calculation based on flatten local space of input and kernels then 
-        stored as 2D array. After making 2D array, by using dot product, calculation of all 
-        convolution can be done. Then, reshaping result to proper size. 
-    """
-    def __init__(self,
-                filter = 1,
-                kernel = (1,1,1),
-                stride = (1,1,1),
-                padding = 'valid',
-                initialize_method = 'xavier_uniform',
-                bias_initializer = 'zeros_init',
-                kernel_regularizer = None,
-                bias_regularizer = None,
-                use_bias = True,
-                input_shape = None,
-                **kwargs):
-        super(Conv3D, self).__init__(**kwargs)
-        assert np.array(filter).size == 1, 'Make sure that filter size of Conv3D has 1 dimension such as 32, get : ' + str(filter)
-        assert np.array(kernel).size == 3, 'Make sure that kernel size of Conv3D has 3 dimension such as (2,2,2), get : ' + str(kernel)
-        assert np.array(stride).size == 3, 'Make sure that stride size of Conv3D has 3 dimension such as (2,2,2), get : ' + str(stride)
-        self._input_shape = input_shape
-        self._filter = filter
-        self._K_shape = kernel
-        self._stride = stride
-        self._padding = padding.lower()
-        self._bias = use_bias
-        self._initialize_method = initialize_method
-        self._bias_initialize_method = bias_initializer
-        self._set_initializer()
-        self._kernel_regularizer = kernel_regularizer
-        self._bias_regularizer = bias_regularizer
-
-    def __call__(self, params) -> None:
-        '''
-            Update of some of model parameters and class parameters.
-        '''
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('Conv3D')
-        params['activation'].append('none')
-
-        # If Conv3D layer is the first layer of model, input_shape should be declared.
-        if self._input_shape != None:
-            assert len(self._input_shape) == 4, 'Make sure that input of Conv3D has 4 dimension without batch such as (3,10,28,28).'
-            # get channel, width and height of data
-            self._C, self._D, self._H, self._W = self._input_shape
-        else:
-            # Conv3D layer is not first layer. So get channel, depth, width and height
-            # of data from previous layer output shape
-            assert self._thisLayer != 0, 'First layer of Conv3D should have input_shape!'
-            self._C, self._D, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
-
-        params['#parameters'].append(self._filter * self._K_shape[0] * self._K_shape[1] * self._K_shape[2] * self._C + self._filter)
-
-        if self._padding == 'same':
-            # To handle even size kernel padding, we put more constant to right and bottom side 
-            # of axis like Tensorflow. 
-            # Therefore we need to specify axis's each side padding seperately.
-            self.H_out =  int(np.ceil(self._H / self._stride[0] ))
-            self.W_out =  int(np.ceil(self._W / self._stride[1] ))
-            self.D_out =  int(np.ceil(self._D / self._stride[2] ))
-            pd_h = max((self.H_out - 1) * self._stride[0] + self._K_shape[0] - self._H, 0) # height padding 
-            pd_w = max((self.W_out - 1) * self._stride[1] + self._K_shape[1] - self._W, 0) # width padding
-            pd_d = max((self.D_out - 1) * self._stride[2] + self._K_shape[2] - self._D, 0) # depth padding
-            pd_top = int(pd_h / 2) # top side padding 
-            pd_bot = int(pd_h - pd_top) # bottom side padding 
-            pd_left = int(pd_w / 2) # left side paddding 
-            pd_right = int(pd_w - pd_left) # rights side padding 
-            pd_front = int(pd_d // 2) # front side padding 
-            pd_back = int(pd_d - pd_front) # back side padding 
-        else:
-            pd_top, pd_bot, pd_left, pd_right, pd_front, pd_back = 0, 0, 0, 0, 0, 0 
-            self.H_out =  int((self._H - self._K_shape[0] ) / self._stride[0] + 1)
-            self.W_out =  int((self._W - self._K_shape[1] ) / self._stride[1] + 1)
-            self.D_out =  int((self._D - self._K_shape[2] ) / self._stride[2] + 1)
-        
-        
-        self._P = ((pd_top, pd_bot), (pd_left, pd_right), (pd_front, pd_back))     
-        
-
-        self._output_shape = (self._filter, self.D_out, self.H_out, self.W_out)
-
-        
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add flattened layer neuron number to model params
-        params['model_neuron'].append(self._filter)
-
-        self._init_trainable(params)
-
-    def _init_trainable(self, params):
-        '''
-            Initialization of Conv3D layer's trainable variables.
-        '''
-        # create kernel and bias
-        _k_shape = (self._filter, self._C, self._K_shape[2], self._K_shape[0], self._K_shape[1])
-        _b_shape = (self._filter, 1)
-        _K, _b = self._get_inits(_k_shape, _b_shape)
-        # make kernels as  tensor
-        _K = T.Tensor(_K.astype(np.float32), have_grad=True)
-        # make biases as tensor
-        _b = T.Tensor(_b.astype(np.float32), have_grad=True)
-        # add them to trainable list
-        self._trainable.append(_K)
-        self._trainable.append(_b)
-
-    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
-        '''
-            Computation of Conv3D layer.
-        '''
-        # getting input shapes separately
-        N, C, D, H, W = inputs.shape
-        # base_shape 
-        base_shape = inputs.shape
-        # padding 
-        if self._padding == 'same':
-            inputs.value = np.pad(inputs.value, \
-                ((0,0),(0,0),(self._P[2][0],self._P[2][1]),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
-                    mode='constant', constant_values=0)
-        # location of local space
-        l, k, i, j = conv_util.get_conv3D_indices(base_shape, self._K_shape, self._stride, self._output_shape)
-        # get local spaces of inputs
-        value = inputs[:,l, k, i, j].value
-        # flat the local spaces
-        value = value.transpose(1,2,0).reshape((self._K_shape[0] * self._K_shape[1] * self._K_shape[2] * C, -1))
-        # dot product of kernels and local spaces
-        inputs = T.dot(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value)  )
-        # adding if use_bias is true
-        if self._bias:
-            inputs += self._trainable[1]
-        # reshape dot product to output shape
-        inputs = T.reshape(inputs, (self._filter, self.D_out, self.H_out, self.W_out, N))
-        # arrange dimensions
-        inputs = T.transpose(inputs, (4, 0, 1, 2, 3))
-        return inputs
-
-    def regularize(self) -> T.Tensor:
-        """
-            Regularization of layer.
-        """
-        _res = T.Tensor(0.)
-        if self._kernel_regularizer:
-            _res += self._kernel_regularizer.compute(self._trainable[0])
-        if self._bias_regularizer:
-            _res += self._bias_regularizer.compute(self._trainable[1])
-        return _res
-
-
-
-class MaxPool3D(Layer):
-    """
-        MaxPool3D layer implemented by @Author based on MaxPool2D.
-
-        MaxPooling is getting most dominant feature of data.
-
-        Arguments for initialization :
-        ------------------------------
-
-        kernel              : Size of kernel (Height, Width, Depth). It should declared seperately.
-            >>> type        : tuple
-            >>> Default     : (2,2,2)
-
-        stride              : Stride of kernel (Height, Width, Depth). It should declared seperately.
-            >>> type        : tuple
-            >>> Default     : (2,2,2)
-
-        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
-            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Height`, `Width`
-            and `Depth`. 
-            >>> type        : string
-            >>> Default     : 'valid'
-
-        input_shape         : If MaxPool3D is first layer of model, input_shape should be declared.
-                            Shape will be in form of (channel, depth, height, width).
-            >>> type        : tuple
-            >>> Default     : None
-
-        Implementation done by finding max values index and getting them.
-    """
-    def __init__(self,
-                kernel = (2,2,2),
-                stride = (2,2,2),
-                padding = 'valid',
-                input_shape = None,
-                **kwargs):
-        super(MaxPool3D, self).__init__(**kwargs)
-        assert np.array(kernel).size == 3, 'Make sure that kernel size of MaxPool3D has 3 dimension such as (2,2,2), get : ' + str(kernel)
-        assert np.array(stride).size == 3, 'Make sure that stride size of MaxPool3D has 3 dimension such as (2,2,2), get : ' + str(stride)
-        self._input_shape = input_shape
-        self._K_shape = kernel
-        self._stride = stride
-        self._padding = padding.lower()
-
-    def __call__(self, params) -> None:
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('MaxPool3D')
-        params['activation'].append('none')
-        params['#parameters'].append(0)
-
-        # If MaxPool3D layer is the first layer of model, input_shape should be declared.
-        if self._input_shape != None:
-            # get channel, depth, width and height of data
-            self._C, self._D, self._H, self._W = self._input_shape
-        else:
-            # MaxPool3D layer is not first layer. So get channel, width and height
-            # of data from previous layer output shape
-            self._C, self._D, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
-
-        if self._padding == 'same':
-            # To handle even size kernel padding, we put more constant to right and bottom side 
-            # of axis like Tensorflow. 
-            # Therefore we need to specify axis's each side padding seperately.
-            self.H_out =  int(np.ceil(self._H / self._stride[0] ))
-            self.W_out =  int(np.ceil(self._W / self._stride[1] ))
-            self.D_out =  int(np.ceil(self._D / self._stride[2] ))
-            print(self.H_out, self.W_out, self.D_out)
-            pd_h = max((self.H_out - 1) * self._stride[0] + self._K_shape[0] - self._H, 0) # height padding 
-            pd_w = max((self.W_out - 1) * self._stride[1] + self._K_shape[1] - self._W, 0) # width padding
-            pd_d = max((self.D_out - 1) * self._stride[2] + self._K_shape[2] - self._D, 0) # depth padding
-            pd_top = int(pd_h / 2) # top side padding 
-            pd_bot = int(pd_h - pd_top) # bottom side padding 
-            pd_left = int(pd_w / 2) # left side paddding 
-            pd_right = int(pd_w - pd_left) # rights side padding 
-            pd_front = int(pd_d // 2) # front side padding 
-            pd_back = int(pd_d - pd_front) # back side padding 
-        else:
-            pd_top, pd_bot, pd_left, pd_right, pd_front, pd_back = 0, 0, 0, 0, 0, 0 
-            self.H_out =  int((self._H - self._K_shape[0] ) / self._stride[0] + 1)
-            self.W_out =  int((self._W - self._K_shape[1] ) / self._stride[1] + 1)
-            self.D_out =  int((self._D - self._K_shape[2] ) / self._stride[2] + 1)
-        
-        
-        self._P = ((pd_top, pd_bot), (pd_left, pd_right), (pd_front, pd_back))   
-
-        self._output_shape = (self._C, self.D_out, self.H_out, self.W_out)
-
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add channel number to layer neuron number into model params
-        params['model_neuron'].append(self._C)
-
-    def _init_trainable(self, params):
-        # MaxPool3D layer has no initialized parameters. Thus, pass it.
-        pass
-
-    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
-        '''
-            Computation of MaxPool3D layer.
-        '''
-        # apply padding
-        if self._padding == 'same':
-            inputs.value = np.pad(inputs.value, \
-                ((0,0),(0,0),(self._P[2][0],self._P[2][1]),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
-                    mode='constant', constant_values=0)
-        # gettin input shapes separately
-        N, C, D, H, W = inputs.shape
-        # reshape inputs
-        inputs = T.reshape(inputs, (N * C, 1, D, H, W))
-        # findin pooling locations
-        l, k, i, j = conv_util.get_conv3D_indices(inputs.shape, self._K_shape, self._stride, self._output_shape)
-        # getting local spaces
-        inputs = inputs[:,l, k,i,j]
-        # arrange dimensions
-        inputs = T.transpose(inputs,(1,2,0))
-        # flat local spaces
-        inputs = T.reshape(inputs, (self._K_shape[0] * self._K_shape[1] * self._K_shape[2] , -1)) 
-        # find max values' index 
-        max_idx = np.argmax(inputs.value, axis=0)
-        # get max values
-        inputs = inputs[max_idx, range(max_idx.size)] 
-        # reshape it to output
-        inputs = T.reshape(inputs, (self.D_out, self.H_out, self.W_out, N, C))
-        # arrange dimensions
-        inputs = T.transpose(inputs, (3,4,0,1,2))
-        return inputs
-
-    def regularize(self) -> T.Tensor:
-        """
-            Regularization of layer. This layer do not have regularizable parameter.
-        """
-        return T.Tensor(0.)
-
-
-
-class AveragePool3D(Layer):
-    """
-        AveragePool3D layer implemented by @Author based on AveragePool2D.
-
-        AveragePool is getting average feature of data.
-
-        Arguments for initialization :
-        ------------------------------
-
-        kernel              : Size of kernel (Height, Width, Depth). It should declared seperately.
-            >>> type        : tuple
-            >>> Default     : (2,2,2)
-
-        stride              : Stride of kernel (Height, Width, Depth). It should declared seperately.
-            >>> type        : tuple
-            >>> Default     : (2,2,2)
-
-        padding             : How padding applied. 'same' and 'valid' is accepted padding types. 'valid' 
-            is not apply padding. 'same' is applying paddiing to make output same size w.r.t `Height`, `Width`
-            and `Depth`. 
-            >>> type        : string
-            >>> Default     : 'valid'
-
-        input_shape         : If AveragePool3D is first layer of model, input_shape should be declared.
-                            Shape will be in form of (channel, depth, height, width).
-            >>> type        : tuple
-            >>> Default     : None
-
-        Implementation done by finding max values index and getting them.
-    """
-    def __init__(self,
-                kernel = (2,2,2),
-                stride = (2,2,2),
-                padding = 'valid',
-                input_shape = None,
-                **kwargs):
-        super(AveragePool3D, self).__init__(**kwargs)
-        assert np.array(kernel).size == 3, 'Make sure that kernel size of AveragePool3D has 3 dimension such as (2,2,2), get : ' + str(kernel)
-        assert np.array(stride).size == 3, 'Make sure that stride size of AveragePool3D has 3 dimension such as (2,2,2), get : ' + str(stride)
-        self._input_shape = input_shape
-        self._K_shape = kernel
-        self._stride = stride
-        self._padding = padding.lower()
-
-    def __call__(self, params) -> None:
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('AveragePool3D')
-        params['activation'].append('none')
-        params['#parameters'].append(0)
-
-        # If AveragePool3D layer is the first layer of model, input_shape should be declared.
-        if self._input_shape != None:
-            # get channel, depth, width and height of data
-            self._C, self._D, self._H, self._W = self._input_shape
-        else:
-            # AveragePool3D layer is not first layer. So get channel, width and height
-            # of data from previous layer output shape
-            self._C, self._D, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
-
-        if self._padding == 'same':
-            # To handle even size kernel padding, we put more constant to right and bottom side 
-            # of axis like Tensorflow. 
-            # Therefore we need to specify axis's each side padding seperately.
-            self.H_out =  int(np.ceil(self._H / self._stride[0] ))
-            self.W_out =  int(np.ceil(self._W / self._stride[1] ))
-            self.D_out =  int(np.ceil(self._D / self._stride[2] ))
-            print(self.H_out, self.W_out, self.D_out)
-            pd_h = max((self.H_out - 1) * self._stride[0] + self._K_shape[0] - self._H, 0) # height padding 
-            pd_w = max((self.W_out - 1) * self._stride[1] + self._K_shape[1] - self._W, 0) # width padding
-            pd_d = max((self.D_out - 1) * self._stride[2] + self._K_shape[2] - self._D, 0) # depth padding
-            pd_top = int(pd_h / 2) # top side padding 
-            pd_bot = int(pd_h - pd_top) # bottom side padding 
-            pd_left = int(pd_w / 2) # left side paddding 
-            pd_right = int(pd_w - pd_left) # rights side padding 
-            pd_front = int(pd_d // 2) # front side padding 
-            pd_back = int(pd_d - pd_front) # back side padding 
-        else:
-            pd_top, pd_bot, pd_left, pd_right, pd_front, pd_back = 0, 0, 0, 0, 0, 0 
-            self.H_out =  int((self._H - self._K_shape[0] ) / self._stride[0] + 1)
-            self.W_out =  int((self._W - self._K_shape[1] ) / self._stride[1] + 1)
-            self.D_out =  int((self._D - self._K_shape[2] ) / self._stride[2] + 1)
-        
-        
-        self._P = ((pd_top, pd_bot), (pd_left, pd_right), (pd_front, pd_back))   
-
-        self._output_shape = (self._C, self.D_out, self.H_out, self.W_out)
-
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add channel number to layer neuron number into model params
-        params['model_neuron'].append(self._C)
-
-    def _init_trainable(self, params):
-        # AveragePool3D layer has no initialized parameters. Thus, pass it.
-        pass
-
-    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
-        '''
-            Computation of AveragePool3D layer.
-        '''
-        # apply padding
-        if self._padding == 'same':
-            inputs.value = np.pad(inputs.value, \
-                ((0,0),(0,0),(self._P[2][0],self._P[2][1]),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
-                    mode='constant', constant_values=0)
-        # gettin input shapes separately
-        N, C, D, H, W = inputs.shape
-        # reshape inputs
-        inputs = T.reshape(inputs, (N * C, 1, D, H, W))
-        # findin pooling locations
-        l, k, i, j = conv_util.get_conv3D_indices(inputs.shape, self._K_shape, self._stride, self._output_shape)
-        # getting local spaces
-        inputs = inputs[:,l, k,i,j]
-        # arrange dimensions
-        inputs = T.transpose(inputs,(1,2,0))
-        # flat local spaces
-        inputs = T.reshape(inputs, (self._K_shape[0] * self._K_shape[1] * self._K_shape[2] , -1)) 
-        # find mean values through axis 0
-        inputs = T.mean(inputs, axis=0) 
-        # reshape it to output
-        inputs = T.reshape(inputs, (self.D_out, self.H_out, self.W_out, N, C))
-        # arrange dimensions
-        inputs = T.transpose(inputs, (3,4,0,1,2))
-        return inputs
-
-    def regularize(self) -> T.Tensor:
-        """
-            Regularization of layer. This layer do not have regularizable parameter.
-        """
-        return T.Tensor(0.)
 
 
