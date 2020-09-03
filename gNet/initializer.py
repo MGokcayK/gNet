@@ -10,6 +10,7 @@
         - Uniform init ('uniform_init')
         - Xavier's normal ('xavier_normal')
         - Xavier's uniform ('xavier_uniform')
+        - Orthogonal ('orthogonal')
 
     To call initializer for training, user have one way. \n
         User can declared it in layer declaration. 
@@ -23,8 +24,8 @@
 
     Author : @MGokcayK 
     Create : 30 / 03 / 2020
-    Update : 29 / 06 / 2020
-                Added ones init class.
+    Update : 03 / 09 / 2020
+                Added Orthogonal initialization class.
 """
 
 import numpy as np
@@ -40,6 +41,7 @@ class Initializer:
             - Uniform init ('uniform_init')
             - Xavier's normal ('xavier_normal')
             - Xavier's uniform ('xavier_uniform')
+            - Orthogonal ('orthogonal')
 
         To call initializer for training, user have one way. \n
             User can declared it in layer declaration. 
@@ -261,6 +263,29 @@ class He_uniform(Initializer):
         
         return np.random.uniform(-s, s, size=shape)
 
+class Orthogonal(Initializer):
+    """
+    Orthogonal initialization.
+    
+    Arguments :
+    -----------
+
+        shape   : Shape of orthogonal init.            
+        
+    Ex: we want 10x5 orthogonal matrix.
+
+    >>>  mtrx = Orthogonal().get_init(shape=(10,5)) or Orthogonal().get_init((10,5))
+    """     
+    def get_init(self, shape=None, **kwargs) -> np.ndarray: 
+
+        fan_in, fan_out = self._get_fans(shape)
+        
+        X = np.random.normal(size=shape)
+
+        _, _, Vt = np.linalg.svd(X, full_matrices=False)
+
+        return Vt.reshape(shape)
+
 
 __initializeDeclaretion = {
                             'he_normal' : He_normal,
@@ -271,4 +296,5 @@ __initializeDeclaretion = {
                             'uniform_init' : Uniform_init,
                             'xavier_normal' : Xavier_normal,
                             'xavier_uniform' : Xavier_uniform,
+                            'orthogonal' : Orthogonal
                         }
