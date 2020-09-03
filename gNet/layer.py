@@ -23,8 +23,8 @@
 
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
-    Update : 02 / 09 / 2020
-                Adding SimpleRNN layer and arange some input args.
+    Update : 03 / 09 / 2020
+                Fixing some help docs and change default hidden_state initializer in SimpleRNN.
 """
 
 # import required modules
@@ -450,7 +450,7 @@ class Conv1D(Layer):
 
         input_shape         : If Conv1D is first layer of model, input_shape should be declared.
                             Shape will be in form of (channel, width).
-            >>> type        : bool
+            >>> type        : tuple
             >>> Default     : None
 
         Arguments for compute method is tensor of previous method in proper size.
@@ -638,7 +638,7 @@ class Conv2D(Layer):
 
         input_shape         : If Conv2D is first layer of model, input_shape should be declared.
                             Shape will be in form of (channel, height, width).
-            >>> type        : bool
+            >>> type        : tuple
             >>> Default     : None
 
         Arguments for compute method is tensor of previous method in proper size.
@@ -2048,7 +2048,7 @@ class SimpleRNN(Layer):
 
         hidden_initializer  : Initialize method of hidden state kernel. 
             >>> type        : string
-            >>> Default     : 'xavier_uniform'
+            >>> Default     : 'orthogonal'
 
         bias_initializer    : Layer's bias's initialization method.
             >>> type        : str or custom initializer class
@@ -2075,13 +2075,13 @@ class SimpleRNN(Layer):
             >>> type        : regularizer class
             >>> Default     : None
 
-        use_bias                : Bool of using bias during calculation.
+        use_bias            : Bool of using bias during calculation.
             >>> type        : bool
             >>> Default     : True
 
-        input_shape         : If Conv2D is first layer of model, input_shape should be declared.
-                            Shape will be in form of (channel, height, width).
-            >>> type        : bool
+        input_shape         : If SimpleRNN is first layer of model, input_shape should be declared.
+                            Shape will be in form of (sequential length, data width (word_size)).
+            >>> type        : tuple
             >>> Default     : None
 
         Arguments for compute method is tensor of previous method in proper size.
@@ -2090,7 +2090,7 @@ class SimpleRNN(Layer):
                 cell = 1,
                 activation_function = 'relu',
                 initializer = 'xavier_uniform',
-                hidden_initializer = 'xavier_uniform',
+                hidden_initializer = 'orthogonal',
                 bias_initializer = 'zeros_init',
                 return_sequences = False,
                 return_state = False,
@@ -2162,9 +2162,11 @@ class SimpleRNN(Layer):
             self._hidden_init = ID[_init]()
         else:
             self._hidden_init = self._hidden_initializer
+
         _k_hh = self._hidden_init.get_init(shape=(self._cell, self._cell)) 
         _k_hx = self._initializer.get_init(shape=(self._inp_size, self._cell)) 
         _b_h = self._bias_initializer.get_init(shape=(1,self._cell)) 
+
         # make kernels as  tensor and add them to trainable list
         self._trainable.append(T.Tensor(_k_hh.astype(np.float32), have_grad=True))
         self._trainable.append(T.Tensor(_k_hx.astype(np.float32), have_grad=True))
