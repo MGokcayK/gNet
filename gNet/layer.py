@@ -2488,7 +2488,7 @@ class LSTM(Layer):
 
 
 class GRU(Layer):
-        """
+    """
         GRU layer implementation based on Keras' implementation done by @Author.
 
         Arguments for initialization :
