@@ -26,7 +26,7 @@
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
     Update : 04 / 09 / 2020
-                Adding LSTM and GRU layer.
+                Fixing custom activation function directly (without calling string) not calling.
 """
 
 # import required modules
@@ -229,10 +229,17 @@ class Dense(Layer):
             Update of some of model parameters and class parameters.
         '''
         self._thisLayer = params['layer_number']
-        params['layer_name'].append('Dense : ' + self._activation)
+        params['layer_name'].append('Dense : ' + str(self._activation))
         params['activation'].append(self._activation)
         params['model_neuron'].append(self._neuronNumber)
         params['layer_output_shape'].append(self._neuronNumber)
+
+        # if activation function is `str` create caller.
+        if isinstance(self._activation, str):
+            self._actCaller = self._actFuncCaller[self._activation]()
+        else:
+            self._actCaller = self._activation
+
         self._init_trainable(params)
 
     def _init_trainable(self, params):
@@ -262,7 +269,7 @@ class Dense(Layer):
             Computation of dense layer.
         '''
         _z_layer = inputs @ self._trainable[0] + self._trainable[1]
-        return self._actFuncCaller[self._activation].activate(_z_layer)
+        return self._actCaller.activate(_z_layer)
 
     def regularize(self) -> T.Tensor:
         """
@@ -375,11 +382,17 @@ class Activation(Layer):
             Update some model and class parameters.
         """
         self._thisLayer = params['layer_number']
-        params['layer_name'].append('Activation Layer :' + self._activation)
+        params['layer_name'].append('Activation Layer :' + str(self._activation))
         params['activation'].append(self._activation)
         params['#parameters'].append(0)
         params['model_neuron'].append(params['model_neuron'][self._thisLayer - 1])
         params['layer_output_shape'].append(params['layer_output_shape'][self._thisLayer - 1])
+
+        # if activation function is `str` create caller.
+        if isinstance(self._activation, str):
+            self._actCaller = self._actFuncCaller[self._activation]()
+        else:
+            self._actCaller = self._activation
 
     def _init_trainable(self, params):
         # Activation layer has no initialized parameters. Thus, pass it.
@@ -389,7 +402,7 @@ class Activation(Layer):
         '''
             Computation of activation layer.
         '''
-        return self._actFuncCaller[self._activation].activate(inputs)
+        return self._actCaller.activate(inputs)
 
     def regularize(self) -> T.Tensor:
         """
@@ -2122,8 +2135,8 @@ class SimpleRNN(Layer):
             Update of some of model parameters and class parameters.
         '''
         self._thisLayer = params['layer_number']
-        params['layer_name'].append('SimpleRNN')
-        params['activation'].append(self._activation)
+        params['layer_name'].append('SimpleRNN : ' + str(self._activation))
+        params['activation'].append(str(self._activation))
 
         # If SimpleRNN layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -2151,6 +2164,12 @@ class SimpleRNN(Layer):
         params['model_neuron'].append(self._cell)
         # add number of parameters 
         params['#parameters'].append(self._cell * ( self._cell + self._inp_size + 1))
+
+        # if activation function is `str` create caller.
+        if isinstance(self._activation, str):
+            self._actCaller = self._actFuncCaller[self._activation]()
+        else:
+            self._actCaller = self._activation
 
         self._init_trainable(params)
 
@@ -2194,7 +2213,7 @@ class SimpleRNN(Layer):
             if self._bias:
                 tmp += self._trainable[2]
             # activate value
-            h = self._actFuncCaller[self._activation].activate(tmp)
+            h = self._actCaller.activate(tmp)
             # add sequential output
             if self._ret_seq:
                 if s == 0:
@@ -2332,8 +2351,9 @@ class LSTM(Layer):
             Update of some of model parameters and class parameters.
         '''
         self._thisLayer = params['layer_number']
-        params['layer_name'].append('LSTM')
-        params['activation'].append([self._activation, self._hidden_activation])
+        act_name = str('(Kernel : ' + str(self._activation)+ ' & Hidden : ' + str(self._hidden_activation) + ')')
+        params['layer_name'].append('LSTM : ' + act_name)
+        params['activation'].append(act_name)
 
         # If LSTM layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -2361,6 +2381,18 @@ class LSTM(Layer):
         params['model_neuron'].append(self._cell)
         # add number of parameters 
         params['#parameters'].append(4 * self._cell * ( self._cell + self._inp_size + 1))
+
+        # if activation function is `str` create caller.
+        if isinstance(self._activation, str):
+            self._actCaller = self._actFuncCaller[self._activation]()
+        else:
+            self._actCaller = self._activation
+
+        # if hidden activation function is `str` create caller.
+        if isinstance(self._hidden_activation, str):
+            self._hidden_actCaller = self._actFuncCaller[self._activation]()
+        else:
+            self._hidden_actCaller = self._activation
 
         self._init_trainable(params)
 
@@ -2439,14 +2471,14 @@ class LSTM(Layer):
                 c += self._trainable[10]
                 o += self._trainable[11]
             # activate value
-            ft = self._actFuncCaller[self._hidden_activation].activate(f)
-            it = self._actFuncCaller[self._hidden_activation].activate(i)
-            ct = self._actFuncCaller[self._activation].activate(c)
-            ot = self._actFuncCaller[self._hidden_activation].activate(o)
+            ft = self._hidden_actCaller.activate(f)
+            it = self._hidden_actCaller.activate(i)
+            ct = self._actCaller.activate(c)
+            ot = self._hidden_actCaller.activate(o)
             # calculate cell state
             cell_state = ft * cell_state + it * ct
             # calculate hidden state output
-            h = ot * self._actFuncCaller[self._activation].activate(cell_state)
+            h = ot * self._actCaller.activate(cell_state)
         
             # add sequential output
             if self._ret_seq:
@@ -2586,8 +2618,9 @@ class GRU(Layer):
             Update of some of model parameters and class parameters.
         '''
         self._thisLayer = params['layer_number']
-        params['layer_name'].append('GRU')
-        params['activation'].append([self._activation, self._hidden_activation])
+        act_name = str('(Kernel : ' + str(self._activation)+ ' & Hidden : ' + str(self._hidden_activation) + ')')
+        params['layer_name'].append('GRU : ' + act_name )
+        params['activation'].append(act_name)
 
         # If GRU layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -2614,6 +2647,18 @@ class GRU(Layer):
         params['model_neuron'].append(self._cell)
         # add number of parameters 
         params['#parameters'].append(3 * self._cell * ( self._cell + self._inp_size + 1))
+
+        # if activation function is `str` create caller.
+        if isinstance(self._activation, str):
+            self._actCaller = self._actFuncCaller[self._activation]()
+        else:
+            self._actCaller = self._activation
+
+        # if hidden activation function is `str` create caller.
+        if isinstance(self._hidden_activation, str):
+            self._hidden_actCaller = self._actFuncCaller[self._activation]()
+        else:
+            self._hidden_actCaller = self._activation
 
         self._init_trainable(params)
 
@@ -2679,12 +2724,12 @@ class GRU(Layer):
                 r += self._trainable[7]
             
             # activate value
-            z = self._actFuncCaller[self._hidden_activation].activate(z)
-            r = self._actFuncCaller[self._hidden_activation].activate(r)
+            z = self._hidden_actCaller.activate(z)
+            r = self._hidden_actCaller.activate(r)
             ht = T.dot(inputs[:,s,:], self._trainable[5]) + T.dot(r * h.value, self._trainable[2])
             if self._bias:
                 ht += self._trainable[8]
-            ht = self._actFuncCaller[self._activation].activate(ht)
+            ht = self._actCaller.activate(ht)
             
             # calculate hidden output
             h = z * h + (1-z) * ht
