@@ -17,14 +17,16 @@
         - Dropout
         - Batch Normalization
         - SimpleRNN
+        - LSTM
+        - GRU
 
     Layer should be used with Model Class's add method. Rest of the calculation should be done 
     by NN structure.
 
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
-    Update : 03 / 09 / 2020
-                Fixing some help docs and change default hidden_state initializer in SimpleRNN.
+    Update : 04 / 09 / 2020
+                Adding LSTM and GRU layer.
 """
 
 # import required modules
@@ -2029,7 +2031,7 @@ class BatchNormalization(Layer):
 
 class SimpleRNN(Layer):
     """
-        SimpleRNN layer implementation done by @Author.
+        SimpleRNN layer implementation based on Keras' implementation done by @Author.
 
         Arguments for initialization :
         ------------------------------
@@ -2040,7 +2042,7 @@ class SimpleRNN(Layer):
 
         activation_function : Activation function of SimpleRNN method.
             >>> type        : string
-            >>> Default     : 'relu'
+            >>> Default     : 'tanh'
 
         initializer         : Initialize method of input kernel.
             >>> type        : str or custom initializer class
@@ -2088,7 +2090,7 @@ class SimpleRNN(Layer):
     """
     def __init__(self,
                 cell = 1,
-                activation_function = 'relu',
+                activation_function = 'tanh',
                 initializer = 'xavier_uniform',
                 hidden_initializer = 'orthogonal',
                 bias_initializer = 'zeros_init',
@@ -2190,7 +2192,7 @@ class SimpleRNN(Layer):
             tmp = T.dot(inputs[:,s,:], self._trainable[1]) + T.dot(h, self._trainable[0])
             # adding if use_bias is true 
             if self._bias:
-                tmp += self._trainable[2]# + self._trainable[4]
+                tmp += self._trainable[2]
             # activate value
             h = self._actFuncCaller[self._activation].activate(tmp)
             # add sequential output
@@ -2216,12 +2218,511 @@ class SimpleRNN(Layer):
         """
         _res = T.Tensor(0.)
         if self._kernel_regularizer:
-            _res += self._kernel_regularizer.compute(self._trainable[0])
+            _res += self._kernel_regularizer.compute(self._trainable[1])
         if self._hidden_regularizer:
-            _res += self._hidden_regularizer.compute(self._trainable[1])
+            _res += self._hidden_regularizer.compute(self._trainable[0])
         if self._bias_regularizer:
             _res += self._bias_regularizer.compute(self._trainable[2])
         return _res
+
+
+
+class LSTM(Layer):
+    """
+        LSTM layer implementation based on Keras' implementation done by @Author.
+
+        Arguments for initialization :
+        ------------------------------
+
+        cell                        : Number of cell.
+            >>> type                : int
+            >>> Default             : 1
+
+        activation_function         : Activation function of kernels of LSTM layer.
+            >>> type                : string
+            >>> Default             : 'tanh'
+
+        hidden_activation_function  : Activation function of hidden state kernels of LSTM layer.
+            >>> type                : string
+            >>> Default             : 'tanh'
+
+        initializer                 : Initialize method of input kernel.
+            >>> type                : str or custom initializer class
+            >>> Default             : 'xavier_uniform'
+
+        hidden_initializer          : Initialize method of hidden state kernel. 
+            >>> type                : string
+            >>> Default             : 'orthogonal'
+
+        bias_initializer            : Layer's bias's initialization method.
+            >>> type                : str or custom initializer class
+            >>> Default             : 'zeros_init'
+
+        return_sequences            : Returning sequencial of output. 
+            >>> type                : bool
+            >>> Default             : False
+
+        return_state                : Returning last state of layer. It used with `return_sequences=True`. 
+            It returns sequential output of layer and last state respectly.
+            >>> type                : bool
+            >>> Default             : False
+
+        kernel_regularizer          : Regularizer method of kernels of layer.
+            >>> type                : regularizer class
+            >>> Default             : None
+
+        hidden_regularizer          : Regularizer method of hidden state of layer.
+            >>> type                : regularizer class
+            >>> Default             : None
+
+        bias_regularizer            : Regularizer method of biases of layer.
+            >>> type                : regularizer class
+            >>> Default             : None
+
+        use_bias                    : Bool of using bias during calculation.
+            >>> type                : bool
+            >>> Default             : True
+
+        use_forget_bias             : Bool of using forget bias which initialize as ones.
+            >>> type                : bool
+            >>> Default             : True
+
+        input_shape                 : If LSTM is first layer of model, input_shape should be declared.
+                                    Shape will be in form of (sequential length, data width (word_size)).
+            >>> type                : tuple
+            >>> Default             : None
+
+        Arguments for compute method is tensor of previous method in proper size.
+    """
+    def __init__(self,
+                cell = 1,
+                activation_function = 'tanh',
+                hidden_activation_function = 'sigmoid',
+                initializer = 'xavier_uniform',
+                hidden_initializer = 'orthogonal',
+                bias_initializer = 'zeros_init',
+                return_sequences = False,
+                return_state = False,
+                kernel_regularizer = None,
+                hidden_regularizer = None,
+                bias_regularizer = None,
+                use_bias = True,
+                use_forget_bias = True,
+                input_shape = None,
+                **kwargs):
+        super(LSTM, self).__init__(**kwargs)
+        self._cell = cell
+        self._input_shape = input_shape
+        self._activation = activation_function
+        self._hidden_activation = hidden_activation_function
+        self._ret_seq = return_sequences
+        self._ret_sta = return_state
+        self._bias = use_bias
+        self._forget_bias = use_forget_bias
+        self._initialize_method = initializer
+        self._hidden_initializer = hidden_initializer
+        self._bias_initialize_method = bias_initializer
+        self._set_initializer()
+        self._kernel_regularizer = kernel_regularizer
+        self._hidden_regularizer = hidden_regularizer
+        self._bias_regularizer = bias_regularizer
+
+    def __call__(self, params) -> None:
+        '''
+            Update of some of model parameters and class parameters.
+        '''
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('LSTM')
+        params['activation'].append([self._activation, self._hidden_activation])
+
+        # If LSTM layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            assert len(self._input_shape) == 2, 'Make sure that input of LSTM has 2 dimension without batch such as (10,5).'
+            # get sequencial lenght and input size
+            self._seq_len, self._inp_size = self._input_shape
+        else:
+            # SimpleRNN layer is not first layer. So get sequential lenght and input size 
+            # ofrom previous layer output shape
+            assert self._thisLayer != 0, 'First layer of LSTM should have input_shape!'
+            if isinstance(params['layer_output_shape'][self._thisLayer - 1], int):
+                params['layer_output_shape'][self._thisLayer - 1] = [params['layer_output_shape'][self._thisLayer - 1]]
+            assert len(params['layer_output_shape'][self._thisLayer - 1]) == 2, 'Previous RNN layer`s `return_sequences` should be True'
+            self._seq_len, self._inp_size = params['layer_output_shape'][self._thisLayer - 1]  
+
+        if self._ret_seq:
+            self._output_shape = (self._seq_len, self._cell)
+        else:
+            self._output_shape = (self._cell)
+
+
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add layer neuron number to model params
+        params['model_neuron'].append(self._cell)
+        # add number of parameters 
+        params['#parameters'].append(4 * self._cell * ( self._cell + self._inp_size + 1))
+
+        self._init_trainable(params)
+
+    def _init_trainable(self, params):
+        '''
+            Initialization of LSTM layer's trainable variables.
+        '''
+        # create kernels and biases
+        if isinstance(self._hidden_initializer, str):
+            _init = self._hidden_initializer.lower()
+            self._hidden_init = ID[_init]()
+        else:
+            self._hidden_init = self._hidden_initializer
+
+        _k_hh = self._hidden_init.get_init(shape=(self._cell, self._cell * 4))
+        _k_hh_f = _k_hh[:,:self._cell]
+        _k_hh_i = _k_hh[:,self._cell:self._cell*2]
+        _k_hh_c = _k_hh[:,self._cell*2:self._cell*3]
+        _k_hh_o = _k_hh[:,self._cell*3:self._cell*4]        
+        
+        _k_hx = self._initializer.get_init(shape=(self._inp_size, self._cell * 4)) 
+        _k_hx_f = _k_hx[:, :self._cell]
+        _k_hx_i = _k_hx[:, self._cell:self._cell*2]
+        _k_hx_c = _k_hx[:, self._cell*2:self._cell*3]
+        _k_hx_o = _k_hx[:, self._cell*3:self._cell*4]
+ 
+        _b = self._bias_initializer.get_init(shape=(1,self._cell * 4)) 
+        if self._forget_bias:
+            _b_h_f = ID['ones_init']().get_init(shape=(1, self._cell))
+        else:
+            _b_h_f = _b[:, :self._cell]
+        _b_h_i = _b[:, self._cell:self._cell*2]
+        _b_h_c = _b[:, self._cell*2:self._cell*3]
+        _b_h_o = _b[:, self._cell*3:self._cell*4]
+
+        # make kernels as tensor and add them to trainable list        
+        self._trainable.append(T.Tensor(_k_hh_f.astype(np.float32), have_grad=True)) # 0
+        self._trainable.append(T.Tensor(_k_hh_i.astype(np.float32), have_grad=True)) # 1
+        self._trainable.append(T.Tensor(_k_hh_c.astype(np.float32), have_grad=True)) # 2
+        self._trainable.append(T.Tensor(_k_hh_o.astype(np.float32), have_grad=True)) # 3
+        
+        self._trainable.append(T.Tensor(_k_hx_f.astype(np.float32), have_grad=True)) # 4 
+        self._trainable.append(T.Tensor(_k_hx_i.astype(np.float32), have_grad=True)) # 5
+        self._trainable.append(T.Tensor(_k_hx_c.astype(np.float32), have_grad=True)) # 6
+        self._trainable.append(T.Tensor(_k_hx_o.astype(np.float32), have_grad=True)) # 7
+
+        self._trainable.append(T.Tensor(_b_h_f.astype(np.float32), have_grad=True)) # 8
+        self._trainable.append(T.Tensor(_b_h_i.astype(np.float32), have_grad=True)) # 9
+        self._trainable.append(T.Tensor(_b_h_c.astype(np.float32), have_grad=True)) # 10
+        self._trainable.append(T.Tensor(_b_h_o.astype(np.float32), have_grad=True)) # 11
+
+        
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of LSTM layer.
+        '''
+        # initializer hidden matrix and cell state as zeros
+        h_init = ID['zeros_init']()
+        h = T.Tensor(h_init.get_init((inputs.shape[0],self._cell)))
+        cell_state = T.Tensor(h_init.get_init((inputs.shape[0],self._cell)))
+
+        # sequential output holder        
+        return_seq = T.Tensor(np.empty((inputs.shape[0],self._cell)))
+
+        # for each sequencial data 
+        for s in range(self._seq_len):
+            # finding value to activate
+            f = T.dot(inputs[:,s,:], self._trainable[4]) + T.dot(h.value , self._trainable[0])
+            i = T.dot(inputs[:,s,:], self._trainable[5]) + T.dot(h.value , self._trainable[1])
+            c = T.dot(inputs[:,s,:], self._trainable[6]) + T.dot(h.value , self._trainable[2])
+            o = T.dot(inputs[:,s,:], self._trainable[7]) + T.dot(h.value , self._trainable[3])
+            # adding if use_bias is true 
+            if self._bias:
+                f += self._trainable[8] 
+                i += self._trainable[9]
+                c += self._trainable[10]
+                o += self._trainable[11]
+            # activate value
+            ft = self._actFuncCaller[self._hidden_activation].activate(f)
+            it = self._actFuncCaller[self._hidden_activation].activate(i)
+            ct = self._actFuncCaller[self._activation].activate(c)
+            ot = self._actFuncCaller[self._hidden_activation].activate(o)
+            # calculate cell state
+            cell_state = ft * cell_state + it * ct
+            # calculate hidden state output
+            h = ot * self._actFuncCaller[self._activation].activate(cell_state)
+        
+            # add sequential output
+            if self._ret_seq:
+                if s == 0:
+                    return_seq = h
+                else:    
+                    return_seq = T.append(return_seq, h, 0)                    
+
+        if self._ret_seq:
+            return_seq = T.reshape(return_seq, (self._seq_len,-1, self._cell))
+            if self._ret_sta:
+                return T.transpose(return_seq, (1,0,2)), h 
+            return T.transpose(return_seq, (1,0,2))
+        else:
+            return h
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer.
+        """
+        _res = T.Tensor(0.)
+        if self._kernel_regularizer:
+            _res += self._kernel_regularizer.compute(self._trainable[4])
+            _res += self._kernel_regularizer.compute(self._trainable[5])
+            _res += self._kernel_regularizer.compute(self._trainable[6])
+            _res += self._kernel_regularizer.compute(self._trainable[7])
+        if self._hidden_regularizer:
+            _res += self._hidden_regularizer.compute(self._trainable[0])
+            _res += self._hidden_regularizer.compute(self._trainable[1])
+            _res += self._hidden_regularizer.compute(self._trainable[2])
+            _res += self._hidden_regularizer.compute(self._trainable[3])
+        if self._bias_regularizer:
+            _res += self._bias_regularizer.compute(self._trainable[8])
+            _res += self._bias_regularizer.compute(self._trainable[9])
+            _res += self._bias_regularizer.compute(self._trainable[10])
+            _res += self._bias_regularizer.compute(self._trainable[11])
+        return _res
+
+
+
+class GRU(Layer):
+        """
+        GRU layer implementation based on Keras' implementation done by @Author.
+
+        Arguments for initialization :
+        ------------------------------
+
+        cell                        : Number of cell.
+            >>> type                : int
+            >>> Default             : 1
+
+        activation_function         : Activation function of kernels of GRU layer.
+            >>> type                : string
+            >>> Default             : 'tanh'
+
+        hidden_activation_function  : Activation function of hidden state kernels of GRU layer.
+            >>> type                : string
+            >>> Default             : 'tanh'
+
+        initializer                 : Initialize method of input kernel.
+            >>> type                : str or custom initializer class
+            >>> Default             : 'xavier_uniform'
+
+        hidden_initializer          : Initialize method of hidden state kernel. 
+            >>> type                : string
+            >>> Default             : 'orthogonal'
+
+        bias_initializer            : Layer's bias's initialization method.
+            >>> type                : str or custom initializer class
+            >>> Default             : 'zeros_init'
+
+        return_sequences            : Returning sequencial of output. 
+            >>> type                : bool
+            >>> Default             : False
+
+        return_state                : Returning last state of layer. It used with `return_sequences=True`. 
+            It returns sequential output of layer and last state respectly.
+            >>> type                : bool
+            >>> Default             : False
+
+        kernel_regularizer          : Regularizer method of kernels of layer.
+            >>> type                : regularizer class
+            >>> Default             : None
+
+        hidden_regularizer          : Regularizer method of hidden state of layer.
+            >>> type                : regularizer class
+            >>> Default             : None
+
+        bias_regularizer            : Regularizer method of biases of layer.
+            >>> type                : regularizer class
+            >>> Default             : None
+
+        use_bias                    : Bool of using bias during calculation.
+            >>> type                : bool
+            >>> Default             : True
+
+        input_shape                 : If LSTM is first layer of model, input_shape should be declared.
+                                    Shape will be in form of (sequential length, data width (word_size)).
+            >>> type                : tuple
+            >>> Default             : None
+
+        Arguments for compute method is tensor of previous method in proper size.
+    """
+    def __init__(self,
+                cell = 1,
+                activation_function = 'tanh',
+                hidden_activation_function = 'sigmoid',
+                initializer = 'xavier_uniform',
+                hidden_initializer = 'orthogonal',
+                bias_initializer = 'zeros_init',
+                return_sequences = False,
+                return_state = False,
+                kernel_regularizer = None,
+                hidden_regularizer = None,
+                bias_regularizer = None,
+                use_bias = True,
+                input_shape = None,
+                **kwargs):
+        super(GRU, self).__init__(**kwargs)
+        self._cell = cell
+        self._input_shape = input_shape
+        self._activation = activation_function
+        self._hidden_activation = hidden_activation_function
+        self._ret_seq = return_sequences
+        self._ret_sta = return_state
+        self._bias = use_bias
+        self._initialize_method = initializer
+        self._hidden_initializer = hidden_initializer
+        self._bias_initialize_method = bias_initializer
+        self._set_initializer()
+        self._kernel_regularizer = kernel_regularizer
+        self._hidden_regularizer = hidden_regularizer
+        self._bias_regularizer = bias_regularizer
+
+    def __call__(self, params) -> None:
+        '''
+            Update of some of model parameters and class parameters.
+        '''
+        self._thisLayer = params['layer_number']
+        params['layer_name'].append('GRU')
+        params['activation'].append([self._activation, self._hidden_activation])
+
+        # If GRU layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            assert len(self._input_shape) == 2, 'Make sure that input of GRU has 2 dimension without batch such as (10,5).'
+            # get sequencial lenght and input size
+            self._seq_len, self._inp_size = self._input_shape
+        else:
+            # SimpleRNN layer is not first layer. So get sequential lenght and input size 
+            # ofrom previous layer output shape
+            assert self._thisLayer != 0, 'First layer of GRU should have input_shape!'
+            if isinstance(params['layer_output_shape'][self._thisLayer - 1], int):
+                params['layer_output_shape'][self._thisLayer - 1] = [params['layer_output_shape'][self._thisLayer - 1]]
+            assert len(params['layer_output_shape'][self._thisLayer - 1]) == 2, 'Previous RNN layer`s `return_sequences` should be True'
+            self._seq_len, self._inp_size = params['layer_output_shape'][self._thisLayer - 1]  
+
+        if self._ret_seq:
+            self._output_shape = (self._seq_len, self._cell)
+        else:
+            self._output_shape = (self._cell)
+
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(self._output_shape)
+        # add layer neuron number to model params
+        params['model_neuron'].append(self._cell)
+        # add number of parameters 
+        params['#parameters'].append(3 * self._cell * ( self._cell + self._inp_size + 1))
+
+        self._init_trainable(params)
+
+    def _init_trainable(self, params):
+        '''
+            Initialization of GRU layer's trainable variables.
+        '''
+        # create kernels and biases
+        if isinstance(self._hidden_initializer, str):
+            _init = self._hidden_initializer.lower()
+            self._hidden_init = ID[_init]()
+        else:
+            self._hidden_init = self._hidden_initializer
+
+        _k_hh = self._hidden_init.get_init(shape=(self._cell, self._cell * 3))
+        _k_hh_z = _k_hh[:,:self._cell]
+        _k_hh_r = _k_hh[:,self._cell:self._cell*2]
+        _k_hh_h = _k_hh[:,self._cell*2:self._cell*3]
+        
+        _k_hx = self._initializer.get_init(shape=(self._inp_size, self._cell * 3)) 
+        _k_hx_z = _k_hx[:, :self._cell]
+        _k_hx_r = _k_hx[:, self._cell:self._cell*2]
+        _k_hx_h = _k_hx[:, self._cell*2:self._cell*3]
+ 
+        _b = self._bias_initializer.get_init(shape=(1,self._cell * 3)) 
+        _b_h_z = _b[:, :self._cell]
+        _b_h_r = _b[:, self._cell:self._cell*2]
+        _b_h_h = _b[:, self._cell*2:self._cell*3]
+
+        # make kernels as  tensor and add them to trainable list        
+        self._trainable.append(T.Tensor(_k_hh_z.astype(np.float32), have_grad=True)) # 0
+        self._trainable.append(T.Tensor(_k_hh_r.astype(np.float32), have_grad=True)) # 1
+        self._trainable.append(T.Tensor(_k_hh_h.astype(np.float32), have_grad=True)) # 2
+        
+        self._trainable.append(T.Tensor(_k_hx_z.astype(np.float32), have_grad=True)) # 3 
+        self._trainable.append(T.Tensor(_k_hx_r.astype(np.float32), have_grad=True)) # 4
+        self._trainable.append(T.Tensor(_k_hx_h.astype(np.float32), have_grad=True)) # 5
+
+        self._trainable.append(T.Tensor(_b_h_z.astype(np.float32), have_grad=True)) # 6
+        self._trainable.append(T.Tensor(_b_h_r.astype(np.float32), have_grad=True)) # 7
+        self._trainable.append(T.Tensor(_b_h_h.astype(np.float32), have_grad=True)) # 8
+
+        
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of GRU layer.
+        '''
+        # initializer hidden matrix and cell state as zeros
+        h_init = ID['zeros_init']()
+        h = T.Tensor(h_init.get_init((inputs.shape[0],self._cell)))
+        
+        # sequential output holder        
+        return_seq = T.Tensor(np.empty((inputs.shape[0],self._cell)))
+
+        # for each sequencial data 
+        for s in range(self._seq_len):
+            # finding value to activate
+            z = T.dot(inputs[:,s,:], self._trainable[3])  + T.dot(h.value, self._trainable[0])
+            r = T.dot(inputs[:,s,:], self._trainable[4])  + T.dot(h.value, self._trainable[1])
+            # adding if use_bias is true 
+            if self._bias:
+                z += self._trainable[6]
+                r += self._trainable[7]
+            
+            # activate value
+            z = self._actFuncCaller[self._hidden_activation].activate(z)
+            r = self._actFuncCaller[self._hidden_activation].activate(r)
+            ht = T.dot(inputs[:,s,:], self._trainable[5]) + T.dot(r * h.value, self._trainable[2])
+            if self._bias:
+                ht += self._trainable[8]
+            ht = self._actFuncCaller[self._activation].activate(ht)
+            
+            # calculate hidden output
+            h = z * h + (1-z) * ht
+
+            # add sequential output
+            if self._ret_seq:
+                if s == 0:
+                    return_seq = h
+                else:    
+                    return_seq = T.append(return_seq, h, 0)                    
+        
+        if self._ret_seq:
+            return_seq = T.reshape(return_seq, (self._seq_len,-1, self._cell))
+            if self._ret_sta:
+                return T.transpose(return_seq, (1,0,2)), h 
+            return T.transpose(return_seq, (1,0,2))
+        else:
+            return h
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer.
+        """
+        _res = T.Tensor(0.)
+        if self._kernel_regularizer:
+            _res += self._kernel_regularizer.compute(self._trainable[3])
+            _res += self._kernel_regularizer.compute(self._trainable[4])
+            _res += self._kernel_regularizer.compute(self._trainable[5])
+        if self._hidden_regularizer:
+            _res += self._hidden_regularizer.compute(self._trainable[0])
+            _res += self._hidden_regularizer.compute(self._trainable[1])
+            _res += self._hidden_regularizer.compute(self._trainable[2])
+        if self._bias_regularizer:
+            _res += self._bias_regularizer.compute(self._trainable[6])
+            _res += self._bias_regularizer.compute(self._trainable[7])
+            _res += self._bias_regularizer.compute(self._trainable[8])
+        return _res
+
 
 
 
