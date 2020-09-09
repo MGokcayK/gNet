@@ -3,8 +3,8 @@
 
     Author : @MGokcayK github.com/MGokcayK
     Create : 24 / 03 / 2020
-    Update : 02 / 09 / 2020
-                Add append ops.
+    Update : 09 / 09 / 2020
+                Fixing power operation's negative gradient calculation.
 """
 
 import numpy as np
@@ -276,7 +276,7 @@ def power(t: 'Tensor', p) -> 'Tensor':
             if p == 0:
                 grad = 0
             elif p < 0:
-                grad = np.multiply(np.multiply(p, np.divide(1., (np.power(t._value, abs(p-1))))), grad.astype(np.float32))
+                grad = np.multiply(np.multiply(p, np.divide(1., (np.power(t._value, np.absolute(p-1))))), grad.astype(np.float32))
             else:
                 grad = np.multiply(np.multiply(p, np.power(t._value, (p-1))), grad.astype(np.float32))
             return grad            
