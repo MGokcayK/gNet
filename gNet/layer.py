@@ -25,8 +25,8 @@
 
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
-    Update : 04 / 09 / 2020
-                Fixing custom activation function directly (without calling string) not calling.
+    Update : 15 / 09 / 2020
+                Altering 2D Matrix mul. operations from `dot` to `matmul` tensor ops.
 """
 
 # import required modules
@@ -579,7 +579,7 @@ class Conv1D(Layer):
         # flat the local spaces
         value = value.transpose(1,3,2,0).reshape(self._K * self._C , -1)
         # dot product of kernels and local spaces
-        inputs = T.dot(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value))
+        inputs = T.matmul(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value))
         # adding if use_bias is true
         if self._bias:
             inputs += self._trainable[1]
@@ -775,11 +775,10 @@ class Conv2D(Layer):
         # flat the local spaces
         value = value.transpose(1,2,0).reshape((self._HH * self._WW * C, -1))
         # dot product of kernels and local spaces
-        inputs = T.dot(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value)  )
+        inputs = T.matmul(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value)  )
         # adding if use_bias is true
         if self._bias:
             inputs += self._trainable[1]
-
         # reshape dot product to output shape
         inputs = T.reshape(inputs, (self._filter, self.H_out, self.W_out, N))
         # arrange dimensions
@@ -980,7 +979,7 @@ class Conv3D(Layer):
         # flat the local spaces
         value = value.transpose(1,2,0).reshape((self._K_shape[0] * self._K_shape[1] * self._K_shape[2] * C, -1))
         # dot product of kernels and local spaces
-        inputs = T.dot(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value)  )
+        inputs = T.matmul(T.reshape(self._trainable[0], shape=(self._filter, -1)), T.Tensor(value)  )
         # adding if use_bias is true
         if self._bias:
             inputs += self._trainable[1]
@@ -2208,7 +2207,7 @@ class SimpleRNN(Layer):
         # for each sequencial data 
         for s in range(self._seq_len):
             # finding value to activate
-            tmp = T.dot(inputs[:,s,:], self._trainable[1]) + T.dot(h, self._trainable[0])
+            tmp = T.matmul(inputs[:,s,:], self._trainable[1]) + T.matmul(h, self._trainable[0])
             # adding if use_bias is true 
             if self._bias:
                 tmp += self._trainable[2]
@@ -2460,10 +2459,10 @@ class LSTM(Layer):
         # for each sequencial data 
         for s in range(self._seq_len):
             # finding value to activate
-            f = T.dot(inputs[:,s,:], self._trainable[4]) + T.dot(h.value , self._trainable[0])
-            i = T.dot(inputs[:,s,:], self._trainable[5]) + T.dot(h.value , self._trainable[1])
-            c = T.dot(inputs[:,s,:], self._trainable[6]) + T.dot(h.value , self._trainable[2])
-            o = T.dot(inputs[:,s,:], self._trainable[7]) + T.dot(h.value , self._trainable[3])
+            f = T.matmul(inputs[:,s,:], self._trainable[4]) + T.matmul(h.value , self._trainable[0])
+            i = T.matmul(inputs[:,s,:], self._trainable[5]) + T.matmul(h.value , self._trainable[1])
+            c = T.matmul(inputs[:,s,:], self._trainable[6]) + T.matmul(h.value , self._trainable[2])
+            o = T.matmul(inputs[:,s,:], self._trainable[7]) + T.matmul(h.value , self._trainable[3])
             # adding if use_bias is true 
             if self._bias:
                 f += self._trainable[8] 
@@ -2716,8 +2715,8 @@ class GRU(Layer):
         # for each sequencial data 
         for s in range(self._seq_len):
             # finding value to activate
-            z = T.dot(inputs[:,s,:], self._trainable[3])  + T.dot(h.value, self._trainable[0])
-            r = T.dot(inputs[:,s,:], self._trainable[4])  + T.dot(h.value, self._trainable[1])
+            z = T.matmul(inputs[:,s,:], self._trainable[3])  + T.matmul(h.value, self._trainable[0])
+            r = T.matmul(inputs[:,s,:], self._trainable[4])  + T.matmul(h.value, self._trainable[1])
             # adding if use_bias is true 
             if self._bias:
                 z += self._trainable[6]
@@ -2726,7 +2725,7 @@ class GRU(Layer):
             # activate value
             z = self._hidden_actCaller.activate(z)
             r = self._hidden_actCaller.activate(r)
-            ht = T.dot(inputs[:,s,:], self._trainable[5]) + T.dot(r * h.value, self._trainable[2])
+            ht = T.matmul(inputs[:,s,:], self._trainable[5]) + T.matmul(r * h.value, self._trainable[2])
             if self._bias:
                 ht += self._trainable[8]
             ht = self._actCaller.activate(ht)
