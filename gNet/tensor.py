@@ -20,7 +20,6 @@
      - slice
     
     Added tensor ops by myself :
-     - dot
      - power
      - log
      - log_b
@@ -48,8 +47,8 @@
 
     Author : @MGokcayK github.com/MGokcayK
     Create : 24 / 03 / 2020
-    Update : 02 / 09 / 2020
-                Add append ops.
+    Update : 16 / 09 / 2020
+                Remove `dot` operation which is unnecessary for now.
 """
 
 
@@ -296,6 +295,7 @@ class Tensor:
             if isinstance(dependency, Dependency):
                 back_grad = dependency.grad_fn(grad._value)
                 ops_name = dependency.ops_name
+                #print(grad._value, back_grad, ops_name)
                 dependency.tensor.backward(Tensor(back_grad), ops_name)
             
 
@@ -1292,41 +1292,6 @@ def transpose(t: Tensor, axes=None) -> Tensor:
         Partial derivative is depend on calling method of `backward` like y.backward(). 
     """
     return t_ops.transpose(make_tensor(t), axes)
-
-
-
-def dot(t1: Tensor, t2: Tensor, axes=None) -> Tensor:
-    """
-        Dot product of two `Tensor`. Also it is calculate its gradient
-        of operatation if tensor have_grad = True.
-
-        Arguments:
-        ----------
-
-        t1 : Tensor
-
-        t2 : Tensor
-
-        For example:
-        -----------
-
-        y = dot(a, b)
-
-        If a.have_grad = True => a.grad can be calculated by calling y.backward().
-        It is same for b. 
-
-        If t1 shape (n1, m1) and t2 is (m1, m2), then t3 which is dot(t1, t2) is (n1, m2)
-        Thus, t3.grad is also (n1, m2)
-
-        So, 
-            t1.grad = dot(t3.grad, t2.T)  ==> (n1,m2) (m2, m1) => (n1,m1)
-            t2.grad = dot(t1.T, t3.grad)  ==> (m1,n1) (n1, m2) => (m1,m2)
-
-        Note:
-        -----
-        It is very similar to matmul ops. Dot is more quicker.
-    """
-    return t_ops.dot(make_tensor(t1), make_tensor(t2), axes)
 
 
 

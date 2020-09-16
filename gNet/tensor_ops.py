@@ -3,8 +3,8 @@
 
     Author : @MGokcayK github.com/MGokcayK
     Create : 24 / 03 / 2020
-    Update : 09 / 09 / 2020
-                Fixing power operation's negative gradient calculation.
+    Update : 16 / 09 / 2020
+                Remove `dot` operation which is unnecessary for now.
 """
 
 import numpy as np
@@ -28,14 +28,15 @@ def add(t1: 'Tensor', t2:'Tensor') -> 'Tensor':
             ndims_added = grad.ndim - t1._value.ndim
             for _ in range(ndims_added):
                 grad = grad.sum(axis=0, dtype=np.float32)
-
+                
             # Sum across broadcasted (but non-added dims)
             for i, dim in enumerate(t1.shape):
                 if dim == 1:
                     grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
-
+                    
             return grad
         
+        ops_name = '_add1'
         depends_on.append(T.Dependency(t1, grad_fn_add1, ops_name))
 
     if t2.have_grad:
@@ -51,7 +52,7 @@ def add(t1: 'Tensor', t2:'Tensor') -> 'Tensor':
                     grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
 
             return grad
-        
+        ops_name = '_add2'
         depends_on.append(T.Dependency(t2, grad_fn_add2, ops_name))
 
     return T.Tensor(value, have_grad, depends_on)
@@ -113,7 +114,7 @@ def mul(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
                     grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
 
             return grad
-            
+        ops_name = '_mul1'
         depends_on.append(T.Dependency(t1, grad_fn_mul1, ops_name))
 
     if t2.have_grad:
@@ -130,7 +131,7 @@ def mul(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
                     grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
 
             return grad
-        
+        ops_name = '_mul2'
         depends_on.append(T.Dependency(t2, grad_fn_mul2, ops_name))
 
     return T.Tensor(value, have_grad, depends_on)
@@ -228,13 +229,13 @@ def matmul(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
     if t1.have_grad:
         def grad_fn_matmul1(grad: np.ndarray) -> np.ndarray:
             return np.matmul(grad, t2._value.T, dtype=np.float32)
-
+        ops_name = '_matmul1'
         depends_on.append(T.Dependency(t1, grad_fn_matmul1, ops_name))
 
     if t2.have_grad:
         def grad_fn_matmul2(grad: np.ndarray) -> np.ndarray:
             return np.matmul(t1._value.T, grad, dtype=np.float32)
-
+        ops_name = '_matmul2'        
         depends_on.append(T.Dependency(t2, grad_fn_matmul2, ops_name))
 
     return T.Tensor(value, have_grad, depends_on)
@@ -692,67 +693,6 @@ def transpose(t: 'Tensor', axes=(1,0)) -> 'Tensor':
     else: 
         depends_on = []
         
-    return T.Tensor(value, have_grad, depends_on)
-
-
-
-def dot(t1: 'Tensor', t2: 'Tensor', axes=None) -> 'Tensor':
-    '''
-        Dot product of two `Tensor`. Also it is calculate its gradient
-        of operatation if tensor have_grad = True.
-
-        If t1 shape (n1, m1) and t2 is (m1, m2), then t3 which is t1 @ t2 is (n1, m2)
-        Thus, t3.grad is also (n1, m2)
-
-        So, 
-            t1.grad = t3.grad @ t2.T  ==> (n1,m2) (m2, m1) => (n1,m1)
-            t2.grad = t1.T @ t3.grad  ==> (m1,n1) (n1, m2) => (m1,m2)
-    '''
-    value = np.dot(t1._value,t2._value)
-    have_grad = t1.have_grad or t2.have_grad
-    ops_name = '_dot'
-
-    depends_on: List[Dependency] = []
-
-    if t1.have_grad:
-        def grad_fn_dot1(grad: np.ndarray) -> np.ndarray:
-            return np.dot(grad, t2._value.T)
-
-        depends_on.append(T.Dependency(t1, grad_fn_dot1, ops_name))
-
-    if t2.have_grad:
-        def grad_fn_dot2(grad: np.ndarray) -> np.ndarray:
-            return np.dot(t1._value.T, grad)
-
-        depends_on.append(T.Dependency(t2, grad_fn_dot2, ops_name))
-
-    return T.Tensor(value, have_grad, depends_on)
-
-
-
-def sinh(t: 'Tensor') -> 'Tensor':
-    '''
-        Hyperbolic Sinus calculation of tensor. Also it is calculate its 
-        gradient of operation if tensor have_grad = True.
-
-        Sinus in radian.
-    '''
-    value = np.sinh(t._value, dtype=np.float32)
-    have_grad = t.have_grad
-    ops_name = '_sinh'
-
-    depends_on: List[Dependency] = []
-
-    if have_grad:
-        def grad_fn_sinh(grad: np.ndarray) -> np.ndarray:
-            grad = np.cosh(t._value, dtype=np.float32) * grad.astype(np.float32)
-            return grad
-
-        depends_on.append(T.Dependency(t, grad_fn_sinh, ops_name))
-
-    else: 
-        depends_on = []
-    
     return T.Tensor(value, have_grad, depends_on)
 
 
