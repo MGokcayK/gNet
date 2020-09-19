@@ -4,7 +4,7 @@
     Author : @MGokcayK github.com/MGokcayK
     Create : 24 / 03 / 2020
     Update : 19 / 09 / 2020
-                Readding mistaken removed sinh ops.
+                Adding tanh ops.
 """
 
 import numpy as np
@@ -355,7 +355,9 @@ def exp(t: 'Tensor') -> 'Tensor':
         Exponent calculation of tensor. Also it is calculate its gradient of operation 
         if tensor have_grad = True.
     '''
-    value = np.exp(t._value, dtype=np.float32)
+    mx = t._value.max()
+    value = np.exp(t._value - mx, dtype=np.float32)
+    value = (value / value.sum()).astype(np.float32)
     have_grad = t.have_grad
     ops_name = '_exp'
 
@@ -751,6 +753,33 @@ def cosh(t: 'Tensor') -> 'Tensor':
             return grad
 
         depends_on.append(T.Dependency(t, grad_fn_cosh, ops_name))
+
+    else: 
+        depends_on = []
+    
+    return T.Tensor(value, have_grad, depends_on)
+
+
+
+def tanh(t: 'Tensor') -> 'Tensor':
+    '''
+        Hyperbolic Tangent calculation of tensor. Also it is calculate its 
+        gradient of operation if tensor have_grad = True.
+
+        Cosinus in radian.
+    '''
+    value = np.tanh(t._value, dtype=np.float32)
+    have_grad = t.have_grad
+    ops_name = '_tanh'
+
+    depends_on: List[Dependency] = []
+
+    if have_grad:
+        def grad_fn_tanh(grad: np.ndarray) -> np.ndarray:
+            grad = (1./ np.cosh(t._value, dtype=np.float32)** 2) * grad.astype(np.float32)
+            return grad
+
+        depends_on.append(T.Dependency(t, grad_fn_tanh, ops_name))
 
     else: 
         depends_on = []

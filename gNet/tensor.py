@@ -47,8 +47,8 @@
 
     Author : @MGokcayK github.com/MGokcayK
     Create : 24 / 03 / 2020
-    Update : 16 / 09 / 2020
-                Remove `dot` operation which is unnecessary for now.
+    Update : 19 / 09 / 2020
+                Adding tanh ops.
 """
 
 
@@ -1364,6 +1364,42 @@ def cosh(t: Tensor) -> Tensor:
         Partial derivative is depend on calling method of `backward` like y.backward(). 
     """
     return t_ops.cosh(make_tensor(t))
+
+
+
+def tanh(t: Tensor) -> Tensor:
+    """
+        Hyperbolic Tangent of elements of `Tensor`. Also it is calculate its gradient of
+        operation if tensor's have_grad = True.
+
+        Hyperbolic Sinus in radian.
+
+        Arguments:
+        ----------
+
+        t   : Tensor
+
+        For example:
+        -----------
+
+        y = tanh(a) + tanh(b)
+
+        If a.have_grad = True => a.grad can be calculated by calling y.backward().
+        It is same for b. 
+
+        For example:
+        ------------
+
+        y = tanh(a**2)
+
+        If a.have_grad = True => a.grad can be calculated by calling y.backward()
+        and result equal to 2a * (1. / cosh(a**2))**2.
+
+        Note: 
+        -----
+        Partial derivative is depend on calling method of `backward` like y.backward(). 
+    """
+    return t_ops.tanh(make_tensor(t))
 
 
 

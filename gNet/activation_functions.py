@@ -20,8 +20,8 @@
 
     Author : @MGokcayK 
     Create : 28 / 03 / 2020
-    Update : 02 / 05 / 2020
-                Softplus added.
+    Update : 19 / 09 / 2020
+                Alter tanh activation function.
 """
 
 import numpy as np
@@ -143,7 +143,7 @@ class Softmax(ActivationFunction):
 
 class Tanh(ActivationFunction):
     """
-        Implementation of Tanh Function.
+        Activation of Tanh Function.
 
         Arguments :
         -----------
@@ -154,8 +154,7 @@ class Tanh(ActivationFunction):
     """
     @staticmethod
     def activate(x):
-        return 1.0 - 2. / (T.exp(2*x) + 1.)
-
+        return T.tanh(x)
 
 class noActivate(ActivationFunction):
     """
