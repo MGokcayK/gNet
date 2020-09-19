@@ -4,7 +4,7 @@
     Author : @MGokcayK github.com/MGokcayK
     Create : 24 / 03 / 2020
     Update : 19 / 09 / 2020
-                Adding tanh ops.
+                Adding maximum ops.
 """
 
 import numpy as np
@@ -596,14 +596,6 @@ def where(t: 'Tensor', condition:None, _true:None, _false:None) -> 'Tensor':
         If condition true, return _true.
         If condition false, return _false.
     '''
-    # if _true or _false are not tensor, convert it to tensor.
-    _true = T.make_tensor(_true)
-    if _true.grad == None:
-        _true.grad = T.Tensor(np.zeros_like(t.value, dtype=np.float32))
-    _false = T.make_tensor(_false)
-    if _false.grad == None:
-        _false.grad = T.Tensor(np.zeros_like(t.value, dtype=np.float32))
-
     value = np.where(condition, _true.value, _false.value)
     have_grad = _true.have_grad or _false.have_grad
     ops_name = '_where'
@@ -855,4 +847,33 @@ def append(t1: 'Tensor', t2: 'Tensor', axis=None) -> 'Tensor':
         
         depends_on.append(T.Dependency(t2, grad_fn_append2, ops_name))
 
+    return T.Tensor(value, have_grad, depends_on)
+
+
+
+def maximum(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
+    value = np.maximum(t1._value, t2._value, dtype=np.float32)
+    have_grad = t1.have_grad or t2.have_grad
+    ops_name = '_maximum'
+
+    t1_r = np.round(t1._value, 10)
+    t2_r = np.round(t2._value, 10)    
+    v_r = np.round(value, 10)
+
+    depends_on: List[Dependency] = []
+
+    if t1.have_grad:
+        def grad_fn_maximum1(grad: np.ndarray) -> np.ndarray:            
+            grad = np.equal(t1_r, v_r) * grad.astype(np.float32)
+            return grad
+
+        depends_on.append(T.Dependency(t1, grad_fn_maximum1, ops_name))
+
+    if t2.have_grad:
+        def grad_fn_maximum2(grad: np.ndarray) -> np.ndarray:
+            grad = np.equal(t2_r, v_r) * grad.astype(np.float32)
+            return grad
+
+        depends_on.append(T.Dependency(t2, grad_fn_maximum2, ops_name))
+    
     return T.Tensor(value, have_grad, depends_on)

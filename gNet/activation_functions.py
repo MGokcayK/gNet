@@ -21,7 +21,7 @@
     Author : @MGokcayK 
     Create : 28 / 03 / 2020
     Update : 19 / 09 / 2020
-                Alter tanh activation function.
+                Alter relu and leaky-relu with `tensor_ops.maximum` .
 """
 
 import numpy as np
@@ -67,7 +67,7 @@ class Relu(ActivationFunction):
     """  
     @staticmethod
     def activate(x):  
-        x = T.where(x, x.value > 0, x, 0)
+        x = T.maximum(x, 0)
         return x
 
 class LeakyRelu(ActivationFunction):
@@ -83,7 +83,7 @@ class LeakyRelu(ActivationFunction):
     """  
     @staticmethod
     def activate(x):  
-        x = T.where(x, x.value > 0, x, 0.01*x)
+        x = T.maximum(x, 0.01 * x)
         return x
 
 class Softplus(ActivationFunction):

@@ -44,11 +44,12 @@
      - abs
      - dropout
      - append
+     - maximum
 
     Author : @MGokcayK github.com/MGokcayK
     Create : 24 / 03 / 2020
     Update : 19 / 09 / 2020
-                Adding tanh ops.
+                Adding maximum ops.
 """
 
 
@@ -1160,7 +1161,7 @@ def where(t: Tensor, condition:None, _true:None, _false:None) -> Tensor:
         -----
         Partial derivative is depend on calling method of `backward` like y.backward(). 
     """
-    return t_ops.where(make_tensor(t), condition, _true, _false)
+    return t_ops.where(make_tensor(t), condition, make_tensor(_true), make_tensor(_false))
 
 
    
@@ -1486,6 +1487,7 @@ def dropout(t: Tensor, p = 0.) -> Tensor:
     return t_ops.dropout(make_tensor(t), p)
 
 
+
 def append(t1: Tensor, t2: Tensor, axis=None) -> Tensor:
     """
         Appending two `Tensor`. Also it is calculate its gradient
@@ -1509,4 +1511,50 @@ def append(t1: Tensor, t2: Tensor, axis=None) -> Tensor:
         It is same for b. 
     """
     return t_ops.append(make_tensor(t1), make_tensor(t2), axis)
+
+
+
+def maximum(t1: Tensor, t2: Tensor) -> Tensor:
+    """
+        Element wise maximum of two `Tensor`. Also it is calculate its gradient of
+        operation if one of tensor's have_grad = True.
+
+        Arguments:
+        ----------
+
+        t1 : Tensor
+
+        t2 : Tensor
+
+        For example:
+        -----------
+
+        y = maximum(a, b)
+
+        If a.have_grad = True => a.grad can be calculated by calling y.backward().
+        It is same for b. 
+
+        For example:
+        ------------
+       
+        x = [3,-3]
+
+        a = x * 2
+        
+        b = [0,0]
+
+        y = maximum(a, b) \n
+
+        print(y) will be print [6,0].
+
+        If a.have_grad = True => a.grad can be calculated by calling y.backward()
+        and result equal to [2, 0].
+
+        Note: 
+        -----
+        Partial derivative is depend on calling method of `backward` like y.backward(). 
+    """
+    return t_ops.maximum(make_tensor(t1), make_tensor(t2))
+
+
 
