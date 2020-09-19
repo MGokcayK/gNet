@@ -3,8 +3,8 @@
 
     Author : @MGokcayK github.com/MGokcayK
     Create : 24 / 03 / 2020
-    Update : 16 / 09 / 2020
-                Remove `dot` operation which is unnecessary for now.
+    Update : 19 / 09 / 2020
+                Readding mistaken removed sinh ops.
 """
 
 import numpy as np
@@ -80,6 +80,15 @@ def tensor_sum(t: 'Tensor', axis=0, keepdim=False) -> 'Tensor':
                 Gradient should be 0-tensor. So each element has that much
                 gradient.
             '''
+            # to handle broadcast, add dimension
+            ndims_added = t.value.ndim - grad.ndim 
+            for _ in range(ndims_added):
+                grad = grad.sum(axis=0, dtype=np.float32)
+
+            for i, dim in enumerate(t.shape):
+                if dim == 1:
+                    grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
+
             return grad.astype(np.float32) * np.ones_like(t._value, dtype=np.float32)
             
 
@@ -693,6 +702,32 @@ def transpose(t: 'Tensor', axes=(1,0)) -> 'Tensor':
     else: 
         depends_on = []
         
+    return T.Tensor(value, have_grad, depends_on)
+
+
+
+def sinh(t: 'Tensor') -> 'Tensor':
+    '''
+        Hyperbolic Sinus calculation of tensor. Also it is calculate its 
+        gradient of operation if tensor have_grad = True.
+        Sinus in radian.
+    '''
+    value = np.sinh(t._value, dtype=np.float32)
+    have_grad = t.have_grad
+    ops_name = '_sinh'
+
+    depends_on: List[Dependency] = []
+
+    if have_grad:
+        def grad_fn_sinh(grad: np.ndarray) -> np.ndarray:
+            grad = np.cosh(t._value, dtype=np.float32) * grad.astype(np.float32)
+            return grad
+
+        depends_on.append(T.Dependency(t, grad_fn_sinh, ops_name))
+
+    else: 
+        depends_on = []
+
     return T.Tensor(value, have_grad, depends_on)
 
 
