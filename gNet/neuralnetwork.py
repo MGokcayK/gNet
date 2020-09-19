@@ -14,8 +14,8 @@
 
     Author : @MGokcayK 
     Create : 25 / 03 / 2020
-    Update : 29 / 08 / 2020
-                Changing batch data from differentiable to non-differentiable.
+    Update : 19 / 09 / 2020
+                Alter epoch_loss calculation for multiple loss output such as output layer is TimeDistributed(Dense(2)).
 """
 
 # import built in modules
@@ -310,7 +310,7 @@ class NeuralNetwork:
                 # calculate loss, grad, epoch loss which is total loss of epoch and accuracy
                 _loss = self._loss.loss(_y_batch, _pred, self._model.get_params()) + self._regularizer()
                 _loss.backward()
-                self._epoch_loss += _loss.value                
+                self._epoch_loss += np.mean(_loss.value)
                 self._accVal = self._acc.accuracy(_y_batch,_pred)
 
                 # append history of loss and accuracy
@@ -334,7 +334,7 @@ class NeuralNetwork:
                     _val_y_batch = T.make_tensor(val_y[_val_start:_val_end])                    
                     _val_pred = self._feedForward(_val_x_batch)
                     _val_loss = self._loss.loss(_val_y_batch, _val_pred, self._model.get_params())
-                    self._val_epoch_loss +=  _val_loss.value
+                    self._val_epoch_loss +=  np.mean(_val_loss.value)
                     self._val_accVal = self._val_acc.accuracy(_val_y_batch,_val_pred)
                     self._val_ite += 1
 
@@ -424,10 +424,10 @@ class NeuralNetwork:
         if single_batch:
             self._ite = 1
             self._acc.reset()  
-            self._epoch_loss = _loss.value                  
+            self._epoch_loss = np.mean(_loss.value)
         else:
             self._ite += 1
-            self._epoch_loss += _loss.value
+            self._epoch_loss += np.mean(_loss.value)
 
         self._accVal = self._acc.accuracy(_y_batch,_pred)
         # append history of loss and accuracy
@@ -457,7 +457,7 @@ class NeuralNetwork:
             _val_y_batch = T.make_tensor(self._val_y)                    
             _val_pred = self._feedForward(_val_x_batch)
             _val_loss = self._loss.loss(_val_y_batch, _val_pred, self._model.get_params())
-            self._val_epoch_loss +=  _val_loss.value
+            self._val_epoch_loss +=  np.mean(_val_loss.value)
             self._val_accVal = self._val_acc.accuracy(_val_y_batch,_val_pred)
             self._val_ite += 1
         
@@ -566,7 +566,7 @@ class NeuralNetwork:
             _accValTest = self._acc.accuracy(_y_batch,_pred)
             # calculate loss of prediction to add evaluate loss 
             _loss = self._loss.loss(_y_batch, _pred, self._model.get_params())
-            _eva_loss += _loss.value
+            _eva_loss += np.mean(_loss.value)
             _ite += 1
 
         # print loss, accuracy and passed time for evaluate
@@ -612,14 +612,14 @@ class NeuralNetwork:
         if single_batch:
             self._acc.reset()  
             self._eva_ite = 1
-            self._eva_loss = _loss.value                  
+            self._eva_loss = np.mean(_loss.value)
         else:
             # resetting accuracy when evaluate_one_batch called first time
             if self._eva_acc_reset == False:
                 self._acc.reset()
                 self._eva_acc_reset = True
             self._eva_ite += 1
-            self._eva_loss += _loss.value
+            self._eva_loss += np.mean(_loss.value)
 
         # print loss, accuracy and passed time for evaluate
         print(' Loss : {}, Accuracy : {}'.format(np.round(self._eva_loss / self._eva_ite, 4), np.round(_accValTest, 4)), end='\r')
