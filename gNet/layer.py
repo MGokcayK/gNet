@@ -28,7 +28,7 @@
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
     Update : 21 / 09 / 2020
-                Adding TD and RepeatVector layer and fixing hidden_activation of LSTM and GRU layer.
+                Make RepeatVector reshape dynamically and mixing typos.
 """
 
 # import required modules
@@ -2970,17 +2970,24 @@ class RepeatVector(Layer):
 
     def _init_trainable(self, params):
         '''
-            Initialization of GRU layer's trainable variables.
+            Initialization of RepeatVector layer's trainable variables.
         '''
         pass
 
         
     def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
         '''
-            Computation of GRU layer.
+            Computation of RepeatVector layer.
         '''
+        # index of inputs 
+        ind = [] 
+        [ind.append(d) for d in inputs.shape]
+        ind.insert(1, 1)
 
-        inputs = T.reshape(inputs, (inputs.shape[0], 1, -1))
+        # reshape input 
+        inputs = T.reshape(inputs, ind)
+        
+        # repeat inputs 
         temp = inputs
         for i in range(self._repeat-1):
             temp = T.append(temp, inputs, 1)
