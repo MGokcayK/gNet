@@ -19,14 +19,16 @@
         - SimpleRNN
         - LSTM
         - GRU
+        - TimeDistributed
+        - RepeatVector
 
     Layer should be used with Model Class's add method. Rest of the calculation should be done 
     by NN structure.
 
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
-    Update : 15 / 09 / 2020
-                Altering 2D Matrix mul. operations from `dot` to `matmul` tensor ops.
+    Update : 21 / 09 / 2020
+                Adding TD and RepeatVector layer and fixing hidden_activation of LSTM and GRU layer.
 """
 
 # import required modules
@@ -250,9 +252,13 @@ class Dense(Layer):
             row = 1
             col = 1
         else:
-            row = params['model_neuron'][self._thisLayer-1]
-            col = params['model_neuron'][self._thisLayer]
-
+            row = params['layer_output_shape'][self._thisLayer-1]
+            if (type(row)==tuple):
+                row = params['layer_output_shape'][self._thisLayer-1][0]
+            col = params['layer_output_shape'][self._thisLayer]
+            if (type(col)==tuple):
+                col = params['layer_output_shape'][self._thisLayer][0]
+            
         _w_shape = (row, col)
         _b_shape = [col]
 
@@ -2389,9 +2395,9 @@ class LSTM(Layer):
 
         # if hidden activation function is `str` create caller.
         if isinstance(self._hidden_activation, str):
-            self._hidden_actCaller = self._actFuncCaller[self._activation]()
+            self._hidden_actCaller = self._actFuncCaller[self._hidden_activation]()
         else:
-            self._hidden_actCaller = self._activation
+            self._hidden_actCaller = self._hidden_activation
 
         self._init_trainable(params)
 
@@ -2450,8 +2456,9 @@ class LSTM(Layer):
         '''
         # initializer hidden matrix and cell state as zeros
         h_init = ID['zeros_init']()
+        c_init = ID['zeros_init']()
         h = T.Tensor(h_init.get_init((inputs.shape[0],self._cell)))
-        cell_state = T.Tensor(h_init.get_init((inputs.shape[0],self._cell)))
+        cell_state = T.Tensor(c_init.get_init((inputs.shape[0],self._cell)))
 
         # sequential output holder        
         return_seq = T.Tensor(np.empty((inputs.shape[0],self._cell)))
@@ -2655,9 +2662,9 @@ class GRU(Layer):
 
         # if hidden activation function is `str` create caller.
         if isinstance(self._hidden_activation, str):
-            self._hidden_actCaller = self._actFuncCaller[self._activation]()
+            self._hidden_actCaller = self._actFuncCaller[self._hidden_activation]()
         else:
-            self._hidden_actCaller = self._activation
+            self._hidden_actCaller = self._hidden_activation
 
         self._init_trainable(params)
 
@@ -2766,6 +2773,226 @@ class GRU(Layer):
             _res += self._bias_regularizer.compute(self._trainable[7])
             _res += self._bias_regularizer.compute(self._trainable[8])
         return _res
+
+
+
+class TimeDistributed(Layer):
+    """
+        TimeDistributed layer implementation based on Keras' implementation done by @Author.
+
+        Second dimension is time dimension. If TD layer is used as first layer, input_shape 
+        should include time dimension. Else, input_shape is taken as second dimension of previous
+        layer of model automatically.
+
+        For example : \n
+        input = np.random.randn(32,10,20) # input has 32 batch, 10 time, 20 feature.
+        ...
+        model.add(gNet.layer.TimeDistributed(gNet.layer.LSTM(5,input_shape=(10,20))) # layer output will be (32,10,5).
+        ...
+
+        \n
+
+        Example 2 : \n
+        input = np.random.randn(32,10,1,28,28) # input has 32 batch, 10 time, 1 channel ,28 height, 28 width.
+        ...
+        model.add(gNet.layer.TimeDistributed(gNet.layer.Conv2D(16,input_shape=(10,1,28,28))) # layer output will be (32,10,16,28,28).
+        ...
+
+        Arguments for initialization :
+        ------------------------------
+
+        layer                       : Time Distributed layer.
+            >>> type                : gNet.layer
+            >>> Default             : None
+
+        input_shape                 : If TimeDistributed layer is first layer of model, input_shape should be declared.
+                                    Shape will be in form of (time, input_shape of layer argument) which has no batch
+                                    dimenstion.
+            >>> type                : tuple
+            >>> Default             : None
+
+        Arguments for compute method is tensor of previous method in proper size.
+    """
+    def __init__(self,
+                layer,
+                input_shape = None,
+                **kwargs):
+        super(TimeDistributed, self).__init__(**kwargs)
+        self._time_layer = layer
+        assert isinstance(self._time_layer, Layer), "Input layer of TimeDistributed is not the layer of gNet!"
+        self._input_shape = input_shape
+        
+    def __call__(self, params) -> None:
+        '''
+            Update of some of model parameters and class parameters.
+        '''
+        self._thisLayer = params['layer_number']
+        
+        # If TD layer is the first layer of model, input_shape should be declared.
+        if self._input_shape != None:
+            assert len(self._input_shape) >= 2, 'Make sure that input of TimeDistributed has minimum 2 dimension without batch such as (10,5).'
+        else:
+            # If TD layer is not first layer, get input shape from previous layer.
+            self._input_shape = params['layer_output_shape'][self._thisLayer - 1]
+
+        # temporary parameters for calculating basic properties of layer of self._time_layer.
+        _temp_params = {
+            'layer_number': 1,
+            'layer_name' : [],
+            'activation' : [],
+            'model_neuron' : [],
+            'layers' : [], 
+            'layer_output_shape' : [(self._input_shape[1:])],
+            '#parameters' : []
+        }
+
+        # calculate basic properties of self._time_layer
+        self._time_layer(_temp_params)
+        
+        act_name = str('TimeDistributed : ' + str(_temp_params['layer_name'][-1]))
+        params['layer_name'].append(act_name)
+        params['activation'].append(act_name)
+                
+        # output shape
+        self._output_shape = []
+        self._output_shape.append(self._input_shape[0])
+        if (type(_temp_params['layer_output_shape'][-1]) == int):
+            self._output_shape.append(_temp_params['layer_output_shape'][-1])
+        else:
+            [self._output_shape.append(item) for item in _temp_params['layer_output_shape'][-1]]
+        
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(tuple(self._output_shape))
+        # add layer neuron number to model params
+        params['model_neuron'].append(_temp_params['model_neuron'][-1])
+        # add number of parameters 
+        params['#parameters'].append(_temp_params['#parameters'][-1])
+
+        # passing trainables of self._time_layer to TD layer to update and optimize.
+        [self._trainable.append(trainable) for trainable in self._time_layer._trainable]
+
+    def _init_trainable(self, params):
+        '''
+            Initialization of TD layer's trainable variables.
+        '''
+        pass
+
+        
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of TD layer.
+        '''
+        # base shape of input
+        base_shape = inputs.shape
+
+        # index of inputs 
+        ind = [] 
+        [ind.append(slice(0,d)) for d in base_shape]
+        ind[1] = 0
+
+        # time dimension computation of self._time_layer
+        temp = self._time_layer.compute(inputs[tuple(ind)], train)
+        for i in range(base_shape[1]-1):
+            ind[1] = i+1 # dynamic index of time dimension
+            cout = self._time_layer.compute(inputs[tuple(ind)], train)
+            temp = T.append(temp, cout, 1)            
+
+        # final shape of output
+        final_shape = []
+        final_shape.append(base_shape[0])
+        [final_shape.append(item) for item in self._output_shape]
+
+        # reshape output
+        inputs = T.reshape(temp, final_shape)
+        return inputs
+
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer. This layer do not have regularizable parameter.
+        """
+        return T.Tensor(0.)
+
+
+
+class RepeatVector(Layer):
+    """
+        RepeatVector layer implementation done by @Author.
+
+        Repeat output of previous layer in time dimension which is second dimension. 
+
+        For example : \n
+        input = np.random.randn(32,1,20) # input has 32 batch, 1 time, 20 feature.
+        ...
+        model.add(gNet.layer.RepeatVector(5)) # layer output will be (32,5,20).
+        ...
+
+        Arguments for initialization :
+        ------------------------------
+
+        repeat_number               : Number of repeat.
+            >>> type                : int
+            >>> Default             : 1
+
+        Arguments for compute method is tensor of previous method in proper size.
+    """
+    def __init__(self,
+                repeat_number = 1,
+                **kwargs):
+        super(RepeatVector, self).__init__(**kwargs)
+        assert type(repeat_number) == int, "repeat_number should be integer!"
+        self._repeat = repeat_number
+        
+    def __call__(self, params) -> None:
+        '''
+            Update of some of model parameters and class parameters.
+        '''
+        self._thisLayer = params['layer_number']
+        
+        act_name = str('RepeatVector : ' + str(self._repeat))
+        params['layer_name'].append(act_name)
+        params['activation'].append(act_name)
+                
+        # output shape
+        self._output_shape = []
+        self._output_shape.append(self._repeat)
+        if (type(params['layer_output_shape'][-1]) == int):
+            self._output_shape.append(params['layer_output_shape'][-1])
+        else:
+            [self._output_shape.append(item) for item in params['layer_output_shape'][-1]]
+        
+        # add output shape to model params without batch_size
+        params['layer_output_shape'].append(tuple(self._output_shape))
+        # add layer neuron number to model params
+        params['model_neuron'].append(self._repeat)
+        # add number of parameters 
+        params['#parameters'].append(0)
+
+    def _init_trainable(self, params):
+        '''
+            Initialization of GRU layer's trainable variables.
+        '''
+        pass
+
+        
+    def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+        '''
+            Computation of GRU layer.
+        '''
+
+        inputs = T.reshape(inputs, (inputs.shape[0], 1, -1))
+        temp = inputs
+        for i in range(self._repeat-1):
+            temp = T.append(temp, inputs, 1)
+
+        return temp
+
+
+    def regularize(self) -> T.Tensor:
+        """
+            Regularization of layer. This layer do not have regularizable parameter.
+        """
+        return T.Tensor(0.)
 
 
 
