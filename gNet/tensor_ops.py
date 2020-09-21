@@ -3,10 +3,10 @@
 
     Author : @MGokcayK github.com/MGokcayK
     Create : 24 / 03 / 2020
-    Update : 19 / 09 / 2020
-                Adding maximum ops.
+    Update : 21 / 09 / 2020
+                Fixing broadcasting of tensor_sum and return original exp ops.
 """
-
+import warnings
 import numpy as np
 from gNet import tensor as T
 
@@ -81,13 +81,9 @@ def tensor_sum(t: 'Tensor', axis=0, keepdim=False) -> 'Tensor':
                 gradient.
             '''
             # to handle broadcast, add dimension
-            ndims_added = t.value.ndim - grad.ndim 
+            ndims_added = (t.value.ndim - grad.ndim)
             for _ in range(ndims_added):
                 grad = grad.sum(axis=0, dtype=np.float32)
-
-            for i, dim in enumerate(t.shape):
-                if dim == 1:
-                    grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
 
             return grad.astype(np.float32) * np.ones_like(t._value, dtype=np.float32)
             
@@ -355,9 +351,7 @@ def exp(t: 'Tensor') -> 'Tensor':
         Exponent calculation of tensor. Also it is calculate its gradient of operation 
         if tensor have_grad = True.
     '''
-    mx = t._value.max()
-    value = np.exp(t._value - mx, dtype=np.float32)
-    value = (value / value.sum()).astype(np.float32)
+    value = np.exp(t._value, dtype=np.float32)
     have_grad = t.have_grad
     ops_name = '_exp'
 
