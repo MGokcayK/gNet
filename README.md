@@ -3,6 +3,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/MGokcayK/gNet)](https://github.com/MGokcayK/gNet/releases/)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/gNet)](https://pypi.python.org/pypi/gNet/)
 [![PyPI license](https://img.shields.io/pypi/l/gNet.svg)](https://pypi.python.org/pypi/gNet/)
+[![Docs](https://img.shields.io/badge/Docs-readible-green.svg)](https://github.com/MGokcayK/gNet/blob/master/docs/)
 
 gNet is a mini Deep Learning(DL) library. It is written to understand how DL
 works. It is running on CPU. It is written on Python language and used :
