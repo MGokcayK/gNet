@@ -2542,7 +2542,7 @@ class GRU(Layer):
 
         hidden_activation_function  : Activation function of hidden state kernels of GRU layer.
             >>> type                : string
-            >>> Default             : 'tanh'
+            >>> Default             : 'sigmoid'
 
         initializer                 : Initialize method of input kernel.
             >>> type                : str or custom initializer class
@@ -2951,7 +2951,7 @@ class RepeatVector(Layer):
         
         act_name = str('RepeatVector : ' + str(self._repeat))
         params['layer_name'].append(act_name)
-        params['activation'].append(act_name)
+        params['activation'].append('none')
                 
         # output shape
         self._output_shape = []

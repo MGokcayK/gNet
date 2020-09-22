@@ -94,7 +94,7 @@
 \makeatother
 
 
-\title {gNet (v0.1.2)}
+\title {gNet (v0.2)}
 \author{Mehmet Gökçay KABATAŞ - MGokcayK \\ github.com/MGokcayK \\ \texttt{mgokcaykdev@gmail.com}
 }
 
@@ -152,10 +152,27 @@ pip install gNet
 
 
 
-\chapter{What is difference from previous version?}
+\chapter{What are the difference in v0.2 from previous version v0.1.2?}
 
 \paragraph{}
-There is a several addition and changes from previos version which is v0.1. These difference can be listed as :
+There is a several addition and changes from previous version which is v0.1.2. These difference can be listed as :
+
+\begin{itemize}
+	\item Addition of SimpleRNN, LSTM, GRU, TimeDistributed and RepeatVector layers.
+	\item Addition of tensor.append, tensor.tanh and elementwise tensor.maximum operations.
+	\item Addition of orthogonal initialization for RNN layers.
+	\item Fixing not calling custom activation function directly (without calling string) error.
+	\item Fixing tensor.power operation's negative power gradient calculation.
+	\item Fixing broadcasting of tensor\_sum operation.
+	\item Altering 2D Matrix mul. operations from `dot` to `matmul` tensor ops.
+	\item Altering epoch\_loss calculation for multiple loss output such as output layer is TimeDistributed(Dense(2)).
+	\item Removing tensor.dot operation which is unnecessary for now.
+\end{itemize}
+
+
+\section{What are difference in v0.1.2 from previous version v0.1}
+\paragraph{}
+There is a several addition and changes from previous version which is v0.1. These difference can be listed as :
 
 \begin{itemize}
 	\item Addition of Conv1D, Conv3D, MaxPool1D, MaxPool3D, AveragePool1D, AveragePool3D layers.
@@ -279,7 +296,7 @@ x_train = x_train[:, None, :, :]
 model = gModel.Model()
 
 # add first layer as Conv2D layer with input_shape
-model.add(layer.Conv2D(filter=5, kernel=(9,9),stride=(1,1),padding=0, input_shape=x_train[0].shape, use_bias=True))
+model.add(layer.Conv2D(filter=5, kernel=(9,9),stride=(1,1),padding='valid', input_shape=x_train[0].shape, use_bias=True))
 
 # activate output
 model.add(layer.Activation('relu'))
@@ -337,7 +354,7 @@ from gNet import layer
 model = gModel.Model()
 
 # add first layer as Conv2D layer with input_shape
-model.add(layer.Conv2D(filter=5, kernel=(9,9),stride=(1,1),padding=0, input_shape=x_train.shape[1:], use_bias=True))
+model.add(layer.Conv2D(filter=5, kernel=(9,9),stride=(1,1),padding='valid', input_shape=x_train.shape[1:], use_bias=True))
 
 # activate output
 model.add(layer.Activation('relu'))
@@ -935,7 +952,8 @@ initializer module contains built-in initializer classes. These classes based on
 	\item Normal init ('normal\_init')
 	\item Uniform init ('uniform\_init')
 	\item Xavier's normal ('xavier\_normal')
-	\item Xavier's uniform ('xavier\_uniform').
+	\item Xavier's uniform ('xavier\_uniform')
+	\item Orthogonal ('orthogonal').
 \end{itemize}
 
 Calling strings used by callers. Initializers have also caller in layers. If user want to use built-in initializer, just set proper input argument with calling strings. For example, default initialize\_method of Dense layer is 'xavier\_uniform'.
@@ -1024,11 +1042,22 @@ layer module contains built-in layer classes. These classes based on base class 
 	\item Dense
 	\item Flatten
 	\item Activation
+	\item Conv1D
 	\item Conv2D
+	\item Conv3D
+	\item MaxPool1D
 	\item MaxPool2D
+	\item MaxPool3D
+	\item AveragePool1D
 	\item AveragePool2D
+	\item AveragePool3D
 	\item Dropout
-	\item Batch Normalization	
+	\item Batch Normalization
+	\item SimpleRNN
+	\item LSTM
+	\item GRU
+	\item TimeDistributed
+	\item RepeatVector
 \end{itemize}
 
 Layer classes should be used by model`s `add` method. User also can create custom layer w.r.t some rules. 
@@ -1386,6 +1415,91 @@ AveragePool3D layer's append model's some parameters as :
 	\item `activation` as 'none',
 	\item `model\_neuron` as '0',
 	\item `layer\_output\_shape` as '(C, D\_out, H\_out W\_out)',
+	\item `\#parameters` as '0'.
+\end{itemize}
+
+
+
+\section{SimpleRNN Layer}
+
+\paragraph{}
+SimpleRNN layer is basic RNN implementation. Implementation done by \cite{MGK} based on Keras' \cite{Keras} implementation. 
+
+\paragraph{}
+SimpleRNN layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'SimpleRNN' ,
+	\item `activation` as 'tanh',
+	\item `model\_neuron` as \#cell,
+	\item `layer\_output\_shape` as '(sequence\_length, \#cell)',
+	\item `\#parameters` as '\#cell * ( \#cell + \#input\_size + 1)'.
+\end{itemize}
+
+
+
+\section{LSTM Layer}
+
+\paragraph{}
+LSTM layer is one of the RNN implementation. Implementation done by \cite{MGK} based on Keras' \cite{Keras} implementation. 
+
+\paragraph{}
+LSTM layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'LSTM',
+	\item `activation` as 'tanh' + 'sigmoid' ,
+	\item `model\_neuron` as \#cell,
+	\item `layer\_output\_shape` as '(sequence\_length, \#cell)',
+	\item `\#parameters` as '4 * \#cell * ( \#cell + \#input\_size + 1)'.
+\end{itemize}
+
+
+
+\section{GRU Layer}
+
+\paragraph{}
+GRU layer is one of the RNN implementation. Implementation done by \cite{MGK} based on Keras' \cite{Keras} implementation. 
+
+\paragraph{}
+GRU layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'GRU',
+	\item `activation` as 'tanh' + 'sigmoid' ,
+	\item `model\_neuron` as \#cell,
+	\item `layer\_output\_shape` as '(sequence\_length, \#cell)',
+	\item `\#parameters` as '3 * \#cell * ( \#cell + \#input\_size + 1)'.
+\end{itemize}
+
+
+
+\section{TimeDistributed Layer}
+
+\paragraph{}
+TD layer is one of the RNN implementation which apply same layer in time dimension. Implementation done by \cite{MGK} based on Keras' \cite{Keras} implementation. 
+
+\paragraph{}
+TD layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'TimeDistributed',
+	\item `activation` as 'added layer's activation' ,
+	\item `model\_neuron` as 'added layer's model\_neuron',
+	\item `layer\_output\_shape` as '(time, added layer's output)',
+	\item `\#parameters` as 'added layers's parameters'.
+\end{itemize}
+
+
+
+\section{RepeatVector Layer}
+
+\paragraph{}
+RepeatVector layer is one of the RNN implementation which repeat previous layer in time dimension. Implementation done by \cite{MGK} based on Keras' \cite{Keras} implementation. 
+
+\paragraph{}
+RepeatVector layer's append model's some parameters as :
+\begin{itemize}
+	\item `layer\_name' as 'RepeatVector',
+	\item `activation` as 'none' ,
+	\item `model\_neuron` as 'repeat\_number',
+	\item `layer\_output\_shape` as '(repeat\_number, added layer's output)',
 	\item `\#parameters` as '0'.
 \end{itemize}
 

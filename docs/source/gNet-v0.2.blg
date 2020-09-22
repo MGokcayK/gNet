@@ -1,0 +1,57 @@
+This is BibTeX, Version 0.99d (MiKTeX 2.9.7420 64-bit)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: gNet-v0.2.aux
+The style file: abbrvnat.bst
+Database file #1: mgk.bib
+Warning--entry type for "MGK" isn't style-file defined
+--line 4 of file mgk.bib
+Warning--entry type for "Keras" isn't style-file defined
+--line 14 of file mgk.bib
+Warning--entry type for "Joel_Grus" isn't style-file defined
+--line 35 of file mgk.bib
+Warning--entry type for "MNIST" isn't style-file defined
+--line 45 of file mgk.bib
+Warning--entry type for "cs231" isn't style-file defined
+--line 55 of file mgk.bib
+You've used 6 entries,
+            2773 wiz_defined-function locations,
+            626 strings with 5114 characters,
+and the built_in function-call counts, 1996 in all, are:
+= -- 168
+> -- 89
+< -- 5
++ -- 33
+- -- 27
+* -- 120
+:= -- 314
+add.period$ -- 19
+call.type$ -- 6
+change.case$ -- 27
+chr.to.int$ -- 6
+cite$ -- 12
+duplicate$ -- 96
+empty$ -- 194
+format.name$ -- 33
+if$ -- 418
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 2
+newline$ -- 39
+num.names$ -- 24
+pop$ -- 75
+preamble$ -- 1
+purify$ -- 21
+quote$ -- 0
+skip$ -- 86
+stack$ -- 0
+substring$ -- 12
+swap$ -- 6
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 61
+warning$ -- 0
+while$ -- 18
+width$ -- 0
+write$ -- 82
+(There were 5 warnings)

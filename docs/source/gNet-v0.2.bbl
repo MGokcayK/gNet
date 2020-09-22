@@ -1,9 +1,14 @@
-\begin{thebibliography}{5}
+\begin{thebibliography}{6}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[et~al.(2015)]{Keras}
+F.~C. et~al.
+\newblock Keras, 2015.
+\newblock URL \url{https://keras.io}.
 
 \bibitem[Grus(2019)]{Joel_Grus}
 J.~Grus.

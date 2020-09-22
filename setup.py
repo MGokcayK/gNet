@@ -5,20 +5,22 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="gNet", 
-    version="0.1.2.1",
+    version="0.2",
     author="Mehmet Gökçay Kabataş",
     author_email="mgokcaykdev@gmail.com",
     description="A mini Deep Learning Library",
+    licence="MIT",
+    keywords="mini,deep learning", 
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/MGokcayK/gNet",
     packages=setuptools.find_packages(),
     install_requires=[
-        'numpy==1.18.1',
-        'matplotlib==3.1.2',
-        'texttable==1.6.2',
-        'wget==3.2',
-        'idx2numpy==1.2.2'
+        'numpy>=1.18.1',
+        'matplotlib>=3.1.2',
+        'texttable>=1.6.2',
+        'wget>=3.2',
+        'idx2numpy>=1.2.2'
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
