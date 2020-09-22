@@ -2,8 +2,7 @@
 
 [![Generic badge](https://img.shields.io/badge/Github-v0.2-<COLOR>.svg)](https://shields.io/)
 [![Generic badge](https://img.shields.io/badge/pip-v0.2-<COLOR>.svg)](https://shields.io/)
-[![GitHub license](https://img.shields.io/github/license/Naereen/StrapDown.js.svg)](https://github.com/Naereen/StrapDown.js/blob/master/LICENSE)
-[![PyPI license](https://img.shields.io/pypi/l/ansicolortags.svg)](https://pypi.python.org/pypi/ansicolortags/)
+[![PyPI license](https://img.shields.io/pypi/l/gNet.svg)](https://pypi.python.org/pypi/gNet/)
 
 gNet is a mini Deep Learning(DL) library. It is written to understand how DL
 works. It is running on CPU. It is written on Python language and used :
