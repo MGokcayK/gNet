@@ -1,7 +1,7 @@
 # gNet
 
 [![Generic badge](https://img.shields.io/badge/Github-v0.2-<COLOR>.svg)](https://shields.io/)
-[![Generic badge](https://img.shields.io/badge/pip-v0.2-<COLOR>.svg)](https://shields.io/)
+[![PyPI version fury.io](https://badge.fury.io/py/ansicolortags.svg)](https://pypi.python.org/pypi/ansicolortags/)
 [![PyPI license](https://img.shields.io/pypi/l/ansicolortags.svg)](https://pypi.python.org/pypi/ansicolortags/)
 
 gNet is a mini Deep Learning(DL) library. It is written to understand how DL
