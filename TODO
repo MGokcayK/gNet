@@ -1,0 +1,41 @@
+@Author : MGokcayK
+
+Main purpose of v0.3 is increasing speed of gNet. 
+To make it possible, there will be backend C++ code
+of gNet by using Eigen. Then make a shared object 
+files to work with Ctypes in Python. 
+
+
+Structure of the C++ and Python are slightly different.
+Yet, main approach will be same. Initialization of 
+parameters will be done in Python and only heavy-weight 
+calculation will be done in C++. 
+
+
+C++ :
+--------------------------------------------------
+- Create CMake Structure to compile C++ files.
+- Create basic graph Structure.
+- Create tensor_ops classes.
+- Create ops module 
+- Create activation_functions module
+- Create loss_functions module
+- Create layer module 
+- Create model module
+- Create neuralnetwork module
+- Create optimizer module
+- Create metric module
+
+
+
+Python : 
+--------------------------------------------------
+- Create C++ ops test scripts 
+- Create C++ activation_functions test scripts
+- Create C++ loss_functions test scripts
+- Create C++ layer test scripts
+- Create C++ model test scripts
+- Create C++ neuralnetwork test scripts
+- Create C++ optimizer test scripts
+- Create C++ metric test scripts 
+- Create data flow structure between Python and C++
