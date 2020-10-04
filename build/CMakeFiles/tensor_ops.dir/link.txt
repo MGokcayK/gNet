@@ -1,0 +1,2 @@
+D:\Qt\Tools\mingw730_64\bin\ar.exe qc libtensor_ops.a  CMakeFiles/tensor_ops.dir/src/tensor_ops.cpp.obj
+D:\Qt\Tools\mingw730_64\bin\ranlib.exe libtensor_ops.a

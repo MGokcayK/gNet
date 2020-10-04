@@ -14,9 +14,9 @@ calculation will be done in C++.
 
 C++ :
 --------------------------------------------------
-- Create CMake Structure to compile C++ files.
-- Create basic graph Structure.
-- Create tensor_ops classes.
++ Create CMake Structure to compile C++ files.
++ Create basic graph Structure.
+- Create and check gNet_py tensor_ops classes in gNet_CPP
 - Create ops module 
 - Create activation_functions module
 - Create loss_functions module
@@ -30,7 +30,7 @@ C++ :
 
 Python : 
 --------------------------------------------------
-- Create C++ ops test scripts 
++ Create C++ ops test scripts 
 - Create C++ activation_functions test scripts
 - Create C++ loss_functions test scripts
 - Create C++ layer test scripts

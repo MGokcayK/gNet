@@ -1,0 +1,86 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.17.0"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"name" : "Release",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "gNet",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "cpp_ops_test::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cpp_ops_test-Release-15dc9628375c20e7676e.json",
+					"name" : "cpp_ops_test",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "graph::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-graph-Release-d4407433548dbadf57f0.json",
+					"name" : "graph",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "py_wrapper::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-py_wrapper-Release-023beb5b2e3a8d88e576.json",
+					"name" : "py_wrapper",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "tensor_ops::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-tensor_ops-Release-e26f02dab00fc82e68f8.json",
+					"name" : "tensor_ops",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/Users/gkcyk/Desktop/gnet_v0_3/gNet/build",
+		"source" : "C:/Users/gkcyk/Desktop/gnet_v0_3/gNet/gNet"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 0
+	}
+}

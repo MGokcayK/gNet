@@ -1,0 +1,2 @@
+D:\Qt\Tools\mingw730_64\bin\ar.exe qc libgraph.a  CMakeFiles/graph.dir/src/graph.cpp.obj
+D:\Qt\Tools\mingw730_64\bin\ranlib.exe libgraph.a
