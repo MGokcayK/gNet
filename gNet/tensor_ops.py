@@ -6,7 +6,6 @@
     Update : 21 / 09 / 2020
                 Fixing broadcasting of tensor_sum and return original exp ops.
 """
-import warnings
 import numpy as np
 from gNet import tensor as T
 
@@ -106,11 +105,12 @@ def mul(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
 
     if t1.have_grad:
         def grad_fn_mul1(grad: np.ndarray) -> np.ndarray:
-            
+
             grad = np.multiply(grad, t2._value, dtype=np.float32)
 
             # to handle broadcast, add dimension
             ndims_added = grad.ndim - t1._value.ndim
+
             for _ in range(ndims_added):
                 grad = grad.sum(axis=0, dtype=np.float32)
 
@@ -119,7 +119,7 @@ def mul(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
                     grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
 
             return grad
-        ops_name = '_mul1'
+
         depends_on.append(T.Dependency(t1, grad_fn_mul1, ops_name))
 
     if t2.have_grad:
@@ -128,6 +128,7 @@ def mul(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
             grad = np.multiply(grad, t1._value, dtype=np.float32)
 
             ndims_added = grad.ndim - t2._value.ndim
+
             for _ in range(ndims_added):
                 grad = grad.sum(axis=0, dtype=np.float32)
 
@@ -136,7 +137,7 @@ def mul(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
                     grad = grad.sum(axis=i, keepdims=True, dtype=np.float32)
 
             return grad
-        ops_name = '_mul2'
+
         depends_on.append(T.Dependency(t2, grad_fn_mul2, ops_name))
 
     return T.Tensor(value, have_grad, depends_on)
@@ -234,13 +235,13 @@ def matmul(t1: 'Tensor', t2: 'Tensor') -> 'Tensor':
     if t1.have_grad:
         def grad_fn_matmul1(grad: np.ndarray) -> np.ndarray:
             return np.matmul(grad, t2._value.T, dtype=np.float32)
-        ops_name = '_matmul1'
+
         depends_on.append(T.Dependency(t1, grad_fn_matmul1, ops_name))
 
     if t2.have_grad:
         def grad_fn_matmul2(grad: np.ndarray) -> np.ndarray:
             return np.matmul(t1._value.T, grad, dtype=np.float32)
-        ops_name = '_matmul2'        
+
         depends_on.append(T.Dependency(t2, grad_fn_matmul2, ops_name))
 
     return T.Tensor(value, have_grad, depends_on)

@@ -14,4 +14,15 @@ import gNet.test.py_wrapper_test as wrapper
 
 #tester.test_add_ops()
 #tester.test_add_ops_grad1()
-tester.test_add_ops_grad2()
+#tester.test_add_ops_grad2()
+
+#tester.test_matmul_ops()
+#tester.test_matmul_ops_grad1()
+#tester.test_matmul_ops_grad2()
+
+tester.test_mul_ops()
+#tester.test_mul_ops_grad1()
+#tester.test_mul_ops_grad2()
+
+#tester.test_pow_ops()
+#tester.test_pow_ops_grad1()

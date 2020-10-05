@@ -150,8 +150,8 @@ CMakeFiles/tensor_ops.dir/clean:
 # Target rules for target CMakeFiles/cpp_ops_test.dir
 
 # All Build rule for target.
-CMakeFiles/cpp_ops_test.dir/all: CMakeFiles/graph.dir/all
 CMakeFiles/cpp_ops_test.dir/all: CMakeFiles/tensor_ops.dir/all
+CMakeFiles/cpp_ops_test.dir/all: CMakeFiles/graph.dir/all
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\cpp_ops_test.dir\build.make CMakeFiles/cpp_ops_test.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\cpp_ops_test.dir\build.make CMakeFiles/cpp_ops_test.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=C:\Users\gkcyk\Desktop\gnet_v0_3\gNet\build\CMakeFiles --progress-num=1,2 "Built target cpp_ops_test"

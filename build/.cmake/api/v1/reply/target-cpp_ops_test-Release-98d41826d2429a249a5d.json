@@ -95,11 +95,11 @@
 	[
 		{
 			"backtrace" : 2,
-			"id" : "graph::@6890427a1f51a3e7e1df"
+			"id" : "tensor_ops::@6890427a1f51a3e7e1df"
 		},
 		{
 			"backtrace" : 2,
-			"id" : "tensor_ops::@6890427a1f51a3e7e1df"
+			"id" : "graph::@6890427a1f51a3e7e1df"
 		}
 	],
 	"id" : "cpp_ops_test::@6890427a1f51a3e7e1df",

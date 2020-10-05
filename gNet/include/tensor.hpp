@@ -15,8 +15,8 @@
 
 //     Author : @MGokcayK 
 //     Create : 04 / 09 / 2020
-//     Update : 04 / 09 / 2020
-//                 Creating file.
+//     Update : 05 / 09 / 2020
+//                 Altering assinging ops_shape.
 // 
 
 #pragma once
@@ -68,7 +68,7 @@ namespace gNet
 			this->NumDim = 7 - (int)std::count(this->store_shape.begin(), this->store_shape.end(), 0);
 			// set ops shape
 			std::copy_n(this->store_shape.begin(), this->store_shape.size(), this->ops_shape.begin());
-			std::fill(this->ops_shape.rbegin(), this->ops_shape.rbegin() + (7 - this->NumDim), 1);
+			std::replace(this->ops_shape.begin(), this->ops_shape.end() , 0, 1);
 			// map raw data to tensor
 			this->value = Eigen::TensorMap<Eigen::Tensor<float, 7 , Eigen::RowMajor>> (data, this->ops_shape);
 			// assign grad of tensor
@@ -99,7 +99,7 @@ namespace gNet
 			this->NumDim = 7 - (int)std::count(this->store_shape.begin(), this->store_shape.end(), 0);
 			// set ops shape
 			std::copy_n(this->store_shape.begin(), this->store_shape.size(), this->ops_shape.begin());
-			std::fill(this->ops_shape.rbegin(), this->ops_shape.rbegin() + (7 - this->NumDim), 1);
+			std::replace(this->ops_shape.begin(), this->ops_shape.end() , 0, 1);
 			// map raw data to tensor
 			this->value = Eigen::TensorMap<Eigen::Tensor<float, 7, Eigen::RowMajor>>(data, this->ops_shape);
 			// assign grad of tensor
@@ -128,7 +128,7 @@ namespace gNet
 			this->NumDim = 7 - (int)std::count(this->store_shape.begin(), this->store_shape.end(), 0);
 			// set ops shape
 			std::copy_n(this->store_shape.begin(), this->store_shape.size(), this->ops_shape.begin());
-			std::fill(this->ops_shape.rbegin(), this->ops_shape.rbegin() + (7 - this->NumDim), 1);
+			std::replace(this->ops_shape.begin(), this->ops_shape.end() , 0, 1);
 			// map raw data to tensor
 			this->value = Eigen::TensorMap<Eigen::Tensor<float, 7, Eigen::RowMajor>>(data, this->ops_shape);
 			// assign grad of tensor
@@ -157,7 +157,7 @@ namespace gNet
 			this->NumDim = 7 - (int)std::count(this->store_shape.begin(), this->store_shape.end(), 0);
 			// set ops shape
 			std::copy_n(this->store_shape.begin(), this->store_shape.size(), this->ops_shape.begin());
-			std::fill(this->ops_shape.rbegin(), this->ops_shape.rbegin() + (7 - this->NumDim), 1);
+			std::replace(this->ops_shape.begin(), this->ops_shape.end() , 0, 1);
 			// map raw data to tensor
 			this->value = Eigen::TensorMap<Eigen::Tensor<float, 7, Eigen::RowMajor>>(data, this->ops_shape);
 			// assign grad of tensor

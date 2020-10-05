@@ -7,13 +7,14 @@
 
 //     Author : @MGokcayK 
 //     Create : 04 / 09 / 2020
-//     Update : 04 / 09 / 2020
-//                 Creating file.
+//     Update : 05 / 09 / 2020
+//                 Move make_grap_node from ops.hpp to graph.hpp
 // 
 
 
 # pragma once
 #include "tensor_ops.hpp"
+
 
 class GraphNode
 {
@@ -36,6 +37,30 @@ public:
 	void backward(bool first_calling = true);
 };
 
+namespace graph
+{
+	// making graph node in templated form.
+	// this is the base templated function.
+	template<typename T>
+	GraphNode* make_graph_node(T param)
+	{
+	}
+
+	// if candidate is gNet::Tensor, create node and register
+	// the tensor.
+	template <> inline
+	GraphNode* make_graph_node<gNet::Tensor*>(gNet::Tensor* candidate)
+	{		
+		GraphNode* node = new GraphNode();
+		node->register_tensor(candidate);
+		return node;
+	}
 
 
-
+	// if candidate input is already GraphNode, just pass it.
+	template <> inline
+	GraphNode* make_graph_node<GraphNode*>(GraphNode* candidate)
+	{		
+		return candidate;
+	}
+}
