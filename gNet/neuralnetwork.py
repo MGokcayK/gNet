@@ -14,8 +14,8 @@
 
     Author : @MGokcayK 
     Create : 25 / 03 / 2020
-    Update : 19 / 09 / 2020
-                Alter epoch_loss calculation for multiple loss output such as output layer is TimeDistributed(Dense(2)).
+    Update : 09 / 10 / 2020
+                Add new functionalities to get_loss_plot, get_accuracy_plot and evaluate methods.
 """
 
 # import built in modules
@@ -528,6 +528,8 @@ class NeuralNetwork:
             Evaluate function of Neural Network structure. To evalute NN, this function should
             be called. 
 
+            evaluate method can return eva_loss and eva_acc respectively optionally.
+
             Arguments:
             ----------
                 
@@ -572,6 +574,7 @@ class NeuralNetwork:
         # print loss, accuracy and passed time for evaluate
         print('Test Loss : {}, Accuracy : {}'.format(np.round(_eva_loss / _ite, 4), np.round(_accValTest, 4)))
         print("Passed Evaluate Time : ", datetime.timedelta(seconds=(time.time()-s_time)))
+        return np.round(_eva_loss / _ite, 4), np.round(_accValTest, 4)
 
 
     def evaluate_one_batch(self, eva_x_batch=None, eva_y_batch=None, single_batch=True):
@@ -694,7 +697,8 @@ class NeuralNetwork:
             print('Model weights of `' + fName + '` loaded successfully..')
 
 
-    def get_loss_plot(self, show=False, save=False, figure_name='gNet_loss.png'):
+    def get_loss_plot(self, show=False, save=False, figure_name='gNet_loss.png', 
+                    figure_title='Loss vs Iterations', x_label='Iterations', y_label='Loss'):
         '''
             Get loss plot of training of Neural Network. Plot can be showed, saved or both of them.
 
@@ -712,13 +716,25 @@ class NeuralNetwork:
                 figure_name         : name of file which store the plot of loss.
                     >>> type        : string
                     >>> Default     : gNet_loss.png 
+
+                figure_title        : set title of plot.
+                    >>> type        : string
+                    >>> Default     : Loss vs Iterations
+
+                x_label             : set x_label of plot.
+                    >>> type        : string
+                    >>> Default     : Iterations
+
+                y_label             : set y_label of plot.
+                    >>> type        : string
+                    >>> Default     : Loss
         '''
         fig = plt.figure()
         ax = fig.add_subplot(1, 1, 1)
         ax.plot(self.his_loss)
-        ax.set_title('Loss vs Iterations')
-        ax.set_ylabel('Loss')
-        ax.set_xlabel('Iterations')
+        ax.set_title(figure_title)
+        ax.set_ylabel(y_label)
+        ax.set_xlabel(x_label)
         ax.grid()
 
         if save:
@@ -728,7 +744,8 @@ class NeuralNetwork:
             plt.show()
 
 
-    def get_accuracy_plot(self, show=False, save=False, figure_name='gNet_accuracy.png'):
+    def get_accuracy_plot(self, show=False, save=False, figure_name='gNet_accuracy.png', 
+                        figure_title='Accuracy vs Iterations', x_label='Iterations', y_label='Accuracy'):
         '''
             Get accuracy plot of training of Neural Network. Plot can be showed, saved or both of them.
 
@@ -746,13 +763,25 @@ class NeuralNetwork:
                 figure_name         : name of file which store the plot of accuracy.
                     >>> type        : string
                     >>> Default     : gNet_accuracy.png 
+
+                figure_title        : set title of plot.
+                    >>> type        : string
+                    >>> Default     : Accuracy vs Iterations
+
+                x_label             : set x_label of plot.
+                    >>> type        : string
+                    >>> Default     : Iterations
+
+                y_label             : set y_label of plot.
+                    >>> type        : string
+                    >>> Default     : Accuracy
         '''
         fig = plt.figure()
         ax = fig.add_subplot(1, 1, 1)
         ax.plot(self.his_acc)
-        ax.set_title('Accuracy vs Iterations')
-        ax.set_ylabel('Accuracy')
-        ax.set_xlabel('Iterations')
+        ax.set_title(figure_title)
+        ax.set_ylabel(y_label)
+        ax.set_xlabel(x_label)
         ax.grid()
 
         if save:
