@@ -1,3 +1,0 @@
-"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\py_wrapper.dir/objects.a
-D:\Qt\Tools\mingw730_64\bin\ar.exe cr CMakeFiles\py_wrapper.dir/objects.a @CMakeFiles\py_wrapper.dir\objects1.rsp
-g++   -Wall -fPIC -O3 -DNDEBUG  -shared -o C:\Users\gkcyk\Desktop\gnet_v0_3\gNet\gNet\bin\libpy_wrapper.so -Wl,--out-implib,libpy_wrapper.dll.a -Wl,--major-image-version,0,--minor-image-version,0 -Wl,--whole-archive CMakeFiles\py_wrapper.dir/objects.a -Wl,--no-whole-archive @CMakeFiles\py_wrapper.dir\linklibs.rsp
