@@ -1,6 +1,10 @@
 *.h 	text diff=cpp
-*.hpp 	text diff=cpp
-*.c 	text diff=c
+*.h		linguist-language=C++
+
 *.cpp 	text diff=cpp
+*.cpp 	linguist-language=C++
 
 *.py 	text diff=python
+*.py	linguist-language=python
+
+
