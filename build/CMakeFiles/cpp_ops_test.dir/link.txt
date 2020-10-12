@@ -1,3 +1,0 @@
-"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\cpp_ops_test.dir/objects.a
-D:\Qt\Tools\mingw730_64\bin\ar.exe cr CMakeFiles\cpp_ops_test.dir/objects.a @CMakeFiles\cpp_ops_test.dir\objects1.rsp
-g++   -Wall -fPIC -O3 -DNDEBUG  -shared -o C:\Users\gkcyk\Desktop\gnet_v0_3\gNet\gNet\bin\libcpp_ops_test.so -Wl,--out-implib,libcpp_ops_test.dll.a -Wl,--major-image-version,0,--minor-image-version,0 -Wl,--whole-archive CMakeFiles\cpp_ops_test.dir/objects.a -Wl,--no-whole-archive @CMakeFiles\cpp_ops_test.dir\linklibs.rsp
