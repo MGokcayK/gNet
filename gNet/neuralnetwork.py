@@ -671,7 +671,7 @@ class NeuralNetwork:
 
 
 
-    def save_model(self, file_name='gNet_weights'):
+    def save_model(self, file_name='gNet_weights', print_result=True):
         '''
             Save model parameters of Neural Network w.r.t file name.
             File extension will be `.npy`.
@@ -682,6 +682,10 @@ class NeuralNetwork:
                 file_name           : name of file which store the parameters of NN.
                     >>> type        : string
                     >>> Default     : gNet_weights 
+
+                print_result        : print if model saved successfully
+                    >>> type        : bool
+                    >>> Default     : True
         '''
         sm = []
         # added each layer's trainable parameters to list 
@@ -697,10 +701,11 @@ class NeuralNetwork:
         np.save(fName, sm)
         # if everythings passed, print the success.
         if os.path.isfile(fName):
-            print('Model weights of `' + fName + '` saved successfully..')
+            if print_result:
+                print('Model weights of `' + fName + '` saved successfully..')
 
 
-    def load_model(self, file_name='gNet_weights'):
+    def load_model(self, file_name='gNet_weights', print_result=True):
         '''
             Load model parameters of Neural Network from file.
             File extension will be `.npy`.
@@ -711,6 +716,10 @@ class NeuralNetwork:
                 file_name           : name of file which store the parameters of NN.
                     >>> type        : string
                     >>> Default     : gNet_weights 
+
+                print_result        : print if model loaded successfully
+                    >>> type        : bool
+                    >>> Default     : True
         '''
         # get model parameters
         model_layer_name = self._model.get_params()['layer_name']
@@ -737,7 +746,8 @@ class NeuralNetwork:
             layer.trainable = w[ind]
         # if everythings passed, print the success.
         if os.path.isfile(fName):
-            print('Model weights of `' + fName + '` loaded successfully..')
+            if print_result:
+                print('Model weights of `' + fName + '` loaded successfully..')
 
 
     def get_loss_plot(self, show=False, save=False, figure_name='gNet_loss.png', 
