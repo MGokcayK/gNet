@@ -14,8 +14,8 @@
 
     Author : @MGokcayK 
     Create : 25 / 03 / 2020
-    Update : 09 / 10 / 2020
-                Add new functionalities to get_loss_plot, get_accuracy_plot and evaluate methods.
+    Update : 17 / 10 / 2020
+                Adding new printing options.
 """
 
 # import built in modules
@@ -154,7 +154,8 @@ class NeuralNetwork:
                 - Accuracy              : 'accuracy',
                 - Validation Loss       : 'val_loss',
                 - Validation Accuracy   : 'val_acc',
-                - ETA                   : 'ETA' 
+                - ETA                   : 'ETA',
+                - Nothing will print    : 'no-print'
                 will be in printing_var.
 
             printing_var is list of strings for printing parameters.
@@ -195,10 +196,13 @@ class NeuralNetwork:
                 printing_list += ' ETA : ' + str(datetime.timedelta(seconds=np.ceil(self._pr_eta)))
 
         # priniting at the end of epoch is different in epoch. Difference is updating on line or not.
-        if end_epoch:
-            print(printing_list)
+        if ('no-print' in printing_var):
+            pass
         else:
-            print(printing_list, end='\r')
+            if end_epoch:
+                print(printing_list)
+            else:
+                print(printing_list, end='\r')
 
 
     def train(self, x, y, batch_size=32, epochs=1, val_x=None, val_y=None, val_rate=None, printing=['loss', 'accuracy'], shuffle=True):
@@ -238,7 +242,10 @@ class NeuralNetwork:
                     >>> Default : True
             
         '''
-        print('Train starting..')
+        if ('no-print' in printing):
+            pass
+        else:
+            print('Train starting..')
         # create start time to calculate total time for training.
         s_time = time.time()
         # set batch size for class
@@ -342,7 +349,10 @@ class NeuralNetwork:
             self._train_print(end_epoch=True, percentage=round((self._per / x.shape[0] * 100), 2), printing_var=printing)
 
         # print training time
-        print("Passed Training Time : ", datetime.timedelta(seconds=(time.time()-s_time)))
+        if ('no-print' in printing):
+            pass
+        else:
+            print("Passed Training Time : ", datetime.timedelta(seconds=(time.time()-s_time)))
 
 
     def train_one_batch(self, x_batch, y_batch, val_x=None, val_y=None, val_rate=None, printing=['loss', 'accuracy'], single_batch=True):
@@ -462,7 +472,7 @@ class NeuralNetwork:
             self._val_ite += 1
         
         # print properties
-        self._train_print(end_epoch=False, printing_var=self._printing_one_batch)
+        self._train_print(end_epoch=True, printing_var=self._printing_one_batch)
 
         self._epoch_loss = 0
         self._ite = 0
@@ -523,7 +533,7 @@ class NeuralNetwork:
         return self._feedForward(T.make_tensor(x))
 
 
-    def evaluate(self, eva_x=None, eva_y=None):
+    def evaluate(self, eva_x=None, eva_y=None, printing=["loss","accuracy","time"]):
         '''
             Evaluate function of Neural Network structure. To evalute NN, this function should
             be called. 
@@ -533,9 +543,13 @@ class NeuralNetwork:
             Arguments:
             ----------
                 
-                eva_x : evaluate data.
+                eva_x           : evaluate data.
 
-                eva_y : label data of evaluation.
+                eva_y           : label data of evaluation.
+
+                printing        : printing parameters for evaulation.
+                    >>> type    : list
+                    >>> Default : ['loss', 'accuracy','time'] 
 
         '''
         # create start time to calculate total time for evaluate.
@@ -572,12 +586,26 @@ class NeuralNetwork:
             _ite += 1
 
         # print loss, accuracy and passed time for evaluate
-        print('Test Loss : {}, Accuracy : {}'.format(np.round(_eva_loss / _ite, 4), np.round(_accValTest, 4)))
-        print("Passed Evaluate Time : ", datetime.timedelta(seconds=(time.time()-s_time)))
+        printing_list = ''
+        
+        if 'loss' in printing:
+            printing_list += 'Test Loss : %.4f ' % (np.round(_eva_loss / _ite, 4))
+        
+        if 'accuracy' in printing:
+            printing_list += 'Accuracy : %.4f ' % (np.round(_accValTest, 4))
+
+        if 'time' in printing:
+            printing_list += "\nPassed Evaluate Time : ", datetime.timedelta(seconds=(time.time()-s_time))
+
+        if 'no-print' in printing:
+            pass
+        else:
+            print(printing_list, end='\r')
+        
         return np.round(_eva_loss / _ite, 4), np.round(_accValTest, 4)
 
 
-    def evaluate_one_batch(self, eva_x_batch=None, eva_y_batch=None, single_batch=True):
+    def evaluate_one_batch(self, eva_x_batch=None, eva_y_batch=None, single_batch=True, printing=['loss','accuracy']):
         '''
             Evaluate one batch of data.
 
@@ -590,7 +618,11 @@ class NeuralNetwork:
 
                 single_batch    : evaluate single batch values.
                     >>> type    : bool
-                    >>> Default : True            
+                    >>> Default : True      
+
+                printing        : printing parameters for evaluation.
+                    >>> type    : list
+                    >>> Default : ['loss', 'accuracy']       
 
             If model is single_batch, it means that only evaluate one batch parameters.
             If model is not single_batch model evaluate parameters upto that time. 
@@ -625,7 +657,18 @@ class NeuralNetwork:
             self._eva_loss += np.mean(_loss.value)
 
         # print loss, accuracy and passed time for evaluate
-        print(' Loss : {}, Accuracy : {}'.format(np.round(self._eva_loss / self._eva_ite, 4), np.round(_accValTest, 4)), end='\r')
+        printing_list = ''
+        if 'loss' in printing:
+            printing_list += 'Test Loss : %.4f ' % (np.round(self._eva_loss / self._eva_ite, 4))
+        
+        if 'accuracy' in printing:
+            printing_list += 'Accuracy : %.4f ' % (np.round(_accValTest, 4))
+
+        if 'no-print' in printing:
+            pass
+        else:
+            print(printing_list, end='\r')
+
 
 
     def save_model(self, file_name='gNet_weights'):
