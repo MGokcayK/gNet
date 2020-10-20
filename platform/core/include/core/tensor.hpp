@@ -20,17 +20,17 @@
 // 
 
 #pragma once
+
 #include <iostream>
 #include <vector>
 #include <string>
 #include <numeric>
-#include <Eigen/src
-//#include "Eigen\CXX11\Tensor"
-#include "dependency.hpp"
-
-//#include <Eigen/Cholesky
 
 #include <Eigen/Cholesky>
+#include <Eigen/unsupported/CXX11/Tensor>
+
+#include "dependency.hpp"
+
 namespace gNet
 {
 	class Tensor
