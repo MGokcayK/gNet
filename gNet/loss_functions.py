@@ -20,8 +20,8 @@
 
     Author : @MGokcayK 
     Create : 25 / 03 / 2020
-    Update : 02 / 06 / 2020
-                Added metrics.
+    Update : 26 / 10 / 2020
+                Fixing mse typo error.
 """
 
 import numpy as np
@@ -176,7 +176,7 @@ class MeanSquareError(Loss):
 
         Basic error calculation method based on difference of prediction and targets.
 
-        Loss = SUM((pi - yi)**2) / n 
+        Loss = SUM((yi - pi)**2) / n 
                 where yi is target and pi is prediction values from neural network.
                 where n is batch size.
     '''
@@ -184,7 +184,7 @@ class MeanSquareError(Loss):
         # make sure that true and prediction values are tensor
         y_true = T.make_tensor(y_true)
         y_pred = T.make_tensor(y_pred)
-        error = y_pred - y_true
+        error = y_true - y_pred
         error = error ** 2
         return T.mean(T.tensor_sum(error, axis=-1), axis=-1)
 
