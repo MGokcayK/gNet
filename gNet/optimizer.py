@@ -22,8 +22,8 @@
 
     Author : @MGokcayK 
     Create : 28 / 03 / 2020
-    Update : 02 / 06 / 2020
-                Fixed Bengio's NAG formula.
+    Update : 04 / 12 / 2020
+                Arrange SGD Momentum calculation order.
 """
 
 import numpy as np
@@ -119,9 +119,9 @@ class SGD(Optimizer):
             else:
                 for ind_tra, trainable in enumerate(layer.trainable):
                     # calculate next velocity with momentum
-                    self.v[ind][ind_tra] = self.momentum * self.v[ind][ind_tra] + self.lr * trainable.grad.value
+                    self.v[ind][ind_tra] = self.momentum * self.v[ind][ind_tra] - self.lr * trainable.grad.value
                     # update trainable value
-                    trainable.value -= self.v[ind][ind_tra]
+                    trainable.value += self.v[ind][ind_tra]
 
 
 class Adagrad(Optimizer):
