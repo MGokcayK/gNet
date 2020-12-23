@@ -14,8 +14,8 @@
 
     Author : @MGokcayK 
     Create : 25 / 03 / 2020
-    Update : 17 / 10 / 2020
-                Adding new printing options.
+    Update : 23 / 12 / 2020
+                Arrange module w.r.t functional layer connection properties of gNet.
 """
 
 # import built in modules
@@ -34,7 +34,6 @@ from gNet.loss_functions import __lossFunctionsDecleration as LD
 import numpy as np
 from texttable import Texttable
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
 
 
 class NeuralNetwork:
@@ -157,7 +156,7 @@ class NeuralNetwork:
                 - ETA                   : 'ETA',
                 - Nothing will print    : 'no-print'
                 will be in printing_var.
-
+            
             printing_var is list of strings for printing parameters.
         """
         printing_list = ''
@@ -315,7 +314,7 @@ class NeuralNetwork:
                 # predict the batch
                 _pred = self._feedForward(_x_batch, True)
                 # calculate loss, grad, epoch loss which is total loss of epoch and accuracy
-                _loss = self._loss.loss(_y_batch, _pred, self._model.get_params()) + self._regularizer()
+                _loss = self._loss.loss(_y_batch, _pred, self._layer[-1]) + self._regularizer()
                 _loss.backward()
                 self._epoch_loss += np.mean(_loss.value)
                 self._accVal = self._acc.accuracy(_y_batch,_pred)
@@ -424,7 +423,7 @@ class NeuralNetwork:
         # predict the batch
         _pred = self._feedForward(_x_batch, True)
         # calculate loss, grad, epoch loss which is total loss of epoch and accuracy
-        _loss = self._loss.loss(_y_batch, _pred, self._model.get_params()) + self._regularizer()
+        _loss = self._loss.loss(_y_batch, _pred, self._layer[-1]) + self._regularizer()
         _loss.backward()         
 
         # if model is single_batch, it means that only calculate batch parameters.
@@ -466,13 +465,13 @@ class NeuralNetwork:
             _val_x_batch = T.make_tensor(self._val_x)
             _val_y_batch = T.make_tensor(self._val_y)                    
             _val_pred = self._feedForward(_val_x_batch)
-            _val_loss = self._loss.loss(_val_y_batch, _val_pred, self._model.get_params())
+            _val_loss = self._loss.loss(_val_y_batch, _val_pred, self._layer[-1])
             self._val_epoch_loss +=  np.mean(_val_loss.value)
             self._val_accVal = self._val_acc.accuracy(_val_y_batch,_val_pred)
             self._val_ite += 1
         
         # print properties
-        self._train_print(end_epoch=True, printing_var=self._printing_one_batch)
+        self._train_print(end_epoch=False, printing_var=self._printing_one_batch)
 
         self._epoch_loss = 0
         self._ite = 0
@@ -539,7 +538,6 @@ class NeuralNetwork:
             be called. 
 
             evaluate method can return eva_loss and eva_acc respectively optionally.
-
             Arguments:
             ----------
                 
@@ -581,7 +579,7 @@ class NeuralNetwork:
             # calculate accuracy of prediction
             _accValTest = self._acc.accuracy(_y_batch,_pred)
             # calculate loss of prediction to add evaluate loss 
-            _loss = self._loss.loss(_y_batch, _pred, self._model.get_params())
+            _loss = self._loss.loss(_y_batch, _pred, self._layer[-1])
             _eva_loss += np.mean(_loss.value)
             _ite += 1
 
@@ -622,7 +620,7 @@ class NeuralNetwork:
 
                 printing        : printing parameters for evaluation.
                     >>> type    : list
-                    >>> Default : ['loss', 'accuracy']       
+                    >>> Default : ['loss', 'accuracy']        
 
             If model is single_batch, it means that only evaluate one batch parameters.
             If model is not single_batch model evaluate parameters upto that time. 
@@ -640,7 +638,7 @@ class NeuralNetwork:
         # calculate accuracy of prediction
         _accValTest = self._acc.accuracy(_eva_y,_pred)
         # calculate loss of prediction to add evaluate loss 
-        _loss = self._loss.loss(_eva_y, _pred, self._model.get_params())
+        _loss = self._loss.loss(_eva_y, _pred, self._layer[-1])
         
         # if model is single_batch, it means that only evaluate batch parameters.
         # if model is not single_batch model evaluate average loss. 
@@ -663,15 +661,13 @@ class NeuralNetwork:
         
         if 'accuracy' in printing:
             printing_list += 'Accuracy : %.4f ' % (np.round(_accValTest, 4))
-
         if 'no-print' in printing:
             pass
         else:
             print(printing_list, end='\r')
 
 
-
-    def save_model(self, file_name='gNet_weights', print_result=True):
+    def save_model(self, file_name='gNet_weights'):
         '''
             Save model parameters of Neural Network w.r.t file name.
             File extension will be `.npy`.
@@ -682,30 +678,11 @@ class NeuralNetwork:
                 file_name           : name of file which store the parameters of NN.
                     >>> type        : string
                     >>> Default     : gNet_weights 
-
-                print_result        : print if model saved successfully
-                    >>> type        : bool
-                    >>> Default     : True
         '''
-        sm = []
-        # added each layer's trainable parameters to list 
-        for layer in self._layer:
-            app_item = layer.trainable
-            # if layer is Batch Norm. save also running mean and running variance
-            if self._model.get_params()['layer_name'][layer._thisLayer] == 'Batch Normalization':
-                app_item = [layer.trainable[0], layer.trainable[1], layer._r_mean, layer._r_var]
-            sm.append(app_item)
-        # set file name
-        fName = file_name + '.npy'
-        # save parameters 
-        np.save(fName, sm)
-        # if everythings passed, print the success.
-        if os.path.isfile(fName):
-            if print_result:
-                print('Model weights of `' + fName + '` saved successfully..')
+        self._layer[-1].save_model(file_name)
 
 
-    def load_model(self, file_name='gNet_weights', print_result=True):
+    def load_model(self, file_name='gNet_weights'):
         '''
             Load model parameters of Neural Network from file.
             File extension will be `.npy`.
@@ -716,52 +693,20 @@ class NeuralNetwork:
                 file_name           : name of file which store the parameters of NN.
                     >>> type        : string
                     >>> Default     : gNet_weights 
-
-                print_result        : print if model loaded successfully
-                    >>> type        : bool
-                    >>> Default     : True
         '''
-        # get model parameters
-        model_layer_name = self._model.get_params()['layer_name']
-        fName = file_name + '.npy'
-        w = np.load(fName, allow_pickle=True)
-        # check layer properties is same as saved ones.
-        for ind, layer in enumerate(self._layer):
-            for ind_tra, trainable in enumerate(layer.trainable):
-                # if layer is Batch Norm. load also running mean and running variance
-                if model_layer_name[ind] == 'Batch Normalization':
-                    tmp = w[ind][ind_tra]
-                    t_shape = tmp.shape
-                    layer._r_mean = w[ind][2]
-                    layer._r_var = w[ind][3]
-                else:
-                    t_shape = w[ind][ind_tra].shape
-
-                assert trainable.shape == t_shape, \
-                    str('Check ' + model_layer_name[ind] + ' or Layer No:'+str(ind) \
-                        +' parameters of model. \n'\
-                        'Loaded model are not proper.\n' + \
-                        'Model :' + str(trainable.shape) + \
-                        '\tLoaded :' +str(t_shape))
-            layer.trainable = w[ind]
-        # if everythings passed, print the success.
-        if os.path.isfile(fName):
-            if print_result:
-                print('Model weights of `' + fName + '` loaded successfully..')
+        self._layer[-1].load_model(file_name)
 
 
     def get_loss_plot(self, show=False, save=False, figure_name='gNet_loss.png', 
                     figure_title='Loss vs Iterations', x_label='Iterations', y_label='Loss'):
         '''
             Get loss plot of training of Neural Network. Plot can be showed, saved or both of them.
-
             Arguments:
             ---------
                 
                 show                : show the figure of loss during training.
                     >>> type        : bool
                     >>> Default     : False
-
                 save                : save the figure of loss during training.
                     >>> type        : bool
                     >>> Default     : False
@@ -769,15 +714,12 @@ class NeuralNetwork:
                 figure_name         : name of file which store the plot of loss.
                     >>> type        : string
                     >>> Default     : gNet_loss.png 
-
                 figure_title        : set title of plot.
                     >>> type        : string
                     >>> Default     : Loss vs Iterations
-
                 x_label             : set x_label of plot.
                     >>> type        : string
                     >>> Default     : Iterations
-
                 y_label             : set y_label of plot.
                     >>> type        : string
                     >>> Default     : Loss
@@ -801,14 +743,12 @@ class NeuralNetwork:
                         figure_title='Accuracy vs Iterations', x_label='Iterations', y_label='Accuracy'):
         '''
             Get accuracy plot of training of Neural Network. Plot can be showed, saved or both of them.
-
             Arguments:
             ---------
                 
                 show                : show the figure of loss during training.
                     >>> type        : bool
                     >>> Default     : False
-
                 save                : save the figure of loss during training.
                     >>> type        : bool
                     >>> Default     : False
@@ -816,15 +756,12 @@ class NeuralNetwork:
                 figure_name         : name of file which store the plot of accuracy.
                     >>> type        : string
                     >>> Default     : gNet_accuracy.png 
-
                 figure_title        : set title of plot.
                     >>> type        : string
                     >>> Default     : Accuracy vs Iterations
-
                 x_label             : set x_label of plot.
                     >>> type        : string
                     >>> Default     : Iterations
-
                 y_label             : set y_label of plot.
                     >>> type        : string
                     >>> Default     : Accuracy
@@ -844,7 +781,7 @@ class NeuralNetwork:
             plt.show()
 
 
-    def get_model_summary(self, show=True, save=False, summary_name='gNet_model_summary.txt'):
+    def get_model_summary(self, show=True, save=False, summary_name='gNet_model_summary.txt', show_pre_layers=False):
         '''
             Get model summary of Neural Network. Summary can be showed, saved or both of them.
 
@@ -862,21 +799,11 @@ class NeuralNetwork:
                 figure_name         : name of file which store the summary of model.
                     >>> type        : string
                     >>> Default     : gNet_model_summary.txt
+
+                show_pre_layers     : show previous layer information in summary.
+                    >>> type        : bool
+                    >>> Default     : False
+                
         '''
-        # get model parameters
-        model_act = self._model.get_params()['layer_name']
-        output_shape = self._model.get_params()['layer_output_shape']
-        params_no = self._model.get_params()['#parameters']   
-        # create texttable
-        t = Texttable()
-        t.add_rows([['Layer', 'Output Shape', '# of Parameters']])
-        for ind in range(len(model_act)):
-            tmp = [str(ind)+ ': '+model_act[ind], output_shape[ind], params_no[ind]]
-            t.add_row(tmp)
-        t.add_row(['Total', ' ', '{:,}'.format(np.sum(params_no))])
-        if show:
-            print(t.draw())
-        if save:
-            f = open(summary_name, 'w')
-            f.write(t.draw())
+        self._layer[-1].get_model_summary(show, save, summary_name, show_pre_layers)
 

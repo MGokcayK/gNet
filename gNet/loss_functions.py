@@ -20,8 +20,8 @@
 
     Author : @MGokcayK 
     Create : 25 / 03 / 2020
-    Update : 26 / 10 / 2020
-                Fixing mse typo error.
+    Update : 23 / 12 / 2020
+                Changed loss method`s arguments from `model_params` to `output_layer`.
 """
 
 import numpy as np
@@ -65,7 +65,7 @@ class Loss:
         self._from_logits = from_logits
         self._axis = axis
 
-    def loss(self, y_true, y_pred, model_params) -> None:
+    def loss(self, y_true, y_pred, output_layer) -> None:
         raise NotImplementedError
 
     def get_metric(self) -> mt.Metric:
@@ -86,7 +86,7 @@ class CategoricalCrossEntropy(Loss):
 
         Generally CCE used for more than 2 output neuron.
     '''
-    def loss(self, y_true, y_pred, model_params) -> 'Tensor':
+    def loss(self, y_true, y_pred, output_layer) -> 'Tensor':
         # make sure that true and prediction values are tensor
         y_true = T.make_tensor(y_true)
         y_pred = T.make_tensor(y_pred)
@@ -94,7 +94,7 @@ class CategoricalCrossEntropy(Loss):
         # make same shape ones `tensor`.
         eps = T.ones(y_pred.shape) * self._eps
 
-        if (model_params['activation'][-1] != 'softmax'):
+        if (output_layer._act_name != 'softmax'):
             # We need to sure that last layer SHOULD NOT be softmax.
             # If it is softmax, we do not need to check from_logits because 
             # if from_logits == True, we have to apply softmax. It is contradiction.
@@ -134,7 +134,7 @@ class BinaryCrossEntropy(Loss):
         
         Generally it is used for binary classification problems.
     '''
-    def loss(self, y_true, y_pred, model_params):         
+    def loss(self, y_true, y_pred, output_layer):         
         # make sure that true and prediction values are tensor
         y_true = T.make_tensor(y_true)
         y_pred = T.make_tensor(y_pred)
@@ -143,7 +143,7 @@ class BinaryCrossEntropy(Loss):
         ones = T.ones(y_pred.shape)
         zeros = ones * 0.
 
-        if (model_params['model_activation'][-1] != 'sigmoid'):
+        if (output_layer._act_name != 'sigmoid'):
             # We need to sure that last layer SHOULD NOT be sigmoid.
             # If it is sigmoid, we do not need to check from_logits because 
             # if from_logits == True, we have to apply sigmoid. It is contradiction.
@@ -176,15 +176,15 @@ class MeanSquareError(Loss):
 
         Basic error calculation method based on difference of prediction and targets.
 
-        Loss = SUM((yi - pi)**2) / n 
+        Loss = SUM((pi - yi)**2) / n 
                 where yi is target and pi is prediction values from neural network.
                 where n is batch size.
     '''
-    def loss(self, y_true, y_pred, model_params):  
+    def loss(self, y_true, y_pred, output_layer):  
         # make sure that true and prediction values are tensor
         y_true = T.make_tensor(y_true)
         y_pred = T.make_tensor(y_pred)
-        error = y_true - y_pred
+        error = y_pred - y_true
         error = error ** 2
         return T.mean(T.tensor_sum(error, axis=-1), axis=-1)
 

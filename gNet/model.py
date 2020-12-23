@@ -6,8 +6,8 @@
 
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
-    Update : 24 / 04 / 2020
-                Description added.
+    Update : 23 / 12 / 2020
+                Change `add` method for functional layer connection properties of gNet.
 """
 import numpy as np
 from typing import List
@@ -29,14 +29,13 @@ class Model:
             'layer_number': 0,
             'layer_name' : [],
             'activation' : [],
-            'model_neuron' : [],
             'layers' : [], 
             'layer_output_shape' : [],
             '#parameters' : []
         }
         print('\n\nModel created and initializing parameters..')
 
-    def add(self, Layer) -> None:
+    def add(self, Layer : Layer) -> None:
         """
             Layer addition method. 
             
@@ -45,8 +44,17 @@ class Model:
             calling them with __call__ magic methods (which 
             implemented in layer class.).
         """
-        Layer(self._params)
-        self._params['layers'].append(Layer)
+        if (self._params['layer_number'] != 0):
+            Layer(self._params['layers'][self._params['layer_number']-1])
+        else:
+            Layer()
+        
+        self._params['layers'].append(Layer)        
+        self._params['layer_name'].append(self._params['layers'][self._params['layer_number']]._layer_name)
+        self._params['activation'].append(self._params['layers'][self._params['layer_number']]._act_name)
+        self._params['#parameters'].append(self._params['layers'][self._params['layer_number']]._numOfParams)
+        self._params['layer_output_shape'].append(self._params['layers'][self._params['layer_number']]._layer_output_shape)
+
         self._params['layer_number'] += 1
 
     def get_layers(self) -> List:
@@ -59,8 +67,7 @@ class Model:
         """
             Zeroing trainable variables of model.
         """
-        for layer in self._params['layers']:
-            layer.zero_grad()
+        self._params['layers'][-1].zero_grad()
 
     def get_params(self) -> None:
         """

@@ -27,16 +27,18 @@
 
     Author : @MGokcayK 
     Create : 04 / 04 / 2020
-    Update : 21 / 09 / 2020
-                Make RepeatVector reshape dynamically and mixing typos.
+    Update : 23 / 12 / 2020
+                Add functional layer connection properties by calling `__call__` method.
 """
 
 # import required modules
+import os
 import numpy as np
 from gNet import tensor as T
 from gNet.activation_functions import __activationFunctionsDecleration as AD
 from gNet.initializer import __initializeDeclaretion as ID
 import gNet.conv_utils as conv_util
+from texttable import Texttable
 
 
 
@@ -49,7 +51,7 @@ class Layer:
         Layer shoudl have two methods which are `_init_trainable`, `__call__` and `compute`.
         These methods can be adapted for proper implementation. 
         `_init_trainable` method can be pass  because of layer's need of initialization.
-        `__call__` method should be implemented for each layer to update model parameters.
+        `__call__` method should be implemented for each layer to connect layers each other.
         `compute` method should be implemented for each layer. Calculation of layer
         done by `compute` method. 
 
@@ -60,6 +62,13 @@ class Layer:
     def __init__(self, **kwargs) -> None:
         self._actFuncCaller = AD
         self._trainable = []
+        self._layer_name = "Base Layer"
+        self._act_name = "Base Activation"
+        self._layer_output_shape = 0
+        self._numOfParams = 0
+        self._layerNo = 0
+        self._preLayer = None
+        self._nextLayers = []
 
     def _set_initializer(self):
         """
@@ -120,20 +129,18 @@ class Layer:
 
     def zero_grad(self):
         """
-            This method make zero of all trainable paramters' grad values. 
+            This method make zero of all layers' trainable parameters' grad values. 
             This is required for each batch. 
         """
-        for trainable in self._trainable:
-            trainable.zero_grad()
+        layers = self.get_layers()
+        for layer in layers:
+            for trainable in layer._trainable:
+                trainable.zero_grad()
 
-    def __call__(self, params) -> None:
+    def __call__(self, Layer = None):
         """
             `__call__` method is one of the important methods of layer class.
-            After adding layer in the Model class, this class called to update
-            model parameters which is argued as dict as named `params`. 
-
-            Updated parameters of model can be changed by layer. Thus, be carefull
-            for updated parameters. 
+            It connects current layer to `Layer` which should be previous layer.
         """
         raise NotImplementedError     
 
@@ -145,6 +152,17 @@ class Layer:
         """
         raise NotImplementedError
 
+    def _connect_layer(self, Layer) -> None:
+        """
+            Connecting layers. If Layer arguments in `__call__` method is None, it means it 
+            it input layer of model. Others are previous layer of current layer. Thus, it 
+            should be connected
+        """
+        if (Layer != None):
+            self._preLayer = Layer
+            Layer._nextLayers.append(self)
+            self._layerNo = Layer._layerNo + 1
+
     def regularize(self) -> T.Tensor:
         """
             Regularize method is base of computation of regularization of layer. 
@@ -153,6 +171,147 @@ class Layer:
             Without regularize method, layer cannot be called by NN. 
         """
         raise NotImplementedError
+
+    def get_layers(self) -> list:
+        """
+            It return all layers which connected form input layer in list.
+        """
+        layers  = []
+        preLayer = True
+        rLayer = self # root(input) layer 
+        while (preLayer):
+            if (rLayer._preLayer != None):
+                rLayer = rLayer._preLayer
+            else:
+                preLayer = False
+        
+        layers.append(rLayer)
+        for item in rLayer._nextLayers:
+            self._nL(item, layers)
+                
+        return layers
+
+    def _nL(self, node, layers) -> None:
+        """
+            Helper for searching layer in node perspective.
+        """
+        layers.append(node)
+        for nl in node._nextLayers:
+            self._nL(nl, layers)
+
+    def save_model(self, file_name='gNet_weights'):
+        '''
+            Save model parameters of Neural Network w.r.t file name.
+            File extension will be `.npy`.
+
+            Argument:
+            ---------
+                
+                file_name           : name of file which store the parameters of NN.
+                    >>> type        : string
+                    >>> Default     : gNet_weights 
+        '''
+        _layer = self.get_layers()
+        sm = []
+        # added each layer's trainable parameters to list 
+        for layer in _layer:
+            app_item = layer.trainable
+            # if layer is Batch Norm. save also running mean and running variance
+            if layer._layer_name == 'Batch Normalization':
+                app_item = [layer.trainable[0], layer.trainable[1], layer._r_mean, layer._r_var]
+            sm.append(app_item)
+        # set file name
+        fName = file_name + '.npy'
+        # save parameters 
+        np.save(fName, sm)
+        # if everythings passed, print the success.
+        if os.path.isfile(fName):
+            print('Model weights of `' + fName + '` saved successfully..')
+
+    def load_model(self, file_name='gNet_weights'):
+        '''
+            Load model parameters of Neural Network from file.
+            File extension will be `.npy`.
+
+            Argument:
+            ---------
+                
+                file_name           : name of file which store the parameters of NN.
+                    >>> type        : string
+                    >>> Default     : gNet_weights 
+        '''
+        # get model parameters
+        _layer = self.get_layers()
+        fName = file_name + '.npy'
+        w = np.load(fName, allow_pickle=True)
+        # check layer properties is same as saved ones.
+        for ind, layer in enumerate(_layer):
+            for ind_tra, trainable in enumerate(layer.trainable):
+                # if layer is Batch Norm. load also running mean and running variance
+                if layer._layer_name == 'Batch Normalization':
+                    tmp = w[ind][ind_tra]
+                    t_shape = tmp.shape
+                    layer._r_mean = w[ind][2]
+                    layer._r_var = w[ind][3]
+                else:
+                    t_shape = w[ind][ind_tra].shape
+
+                assert trainable.shape == t_shape, \
+                    str('Check ' + layer._layer_name + ' or Layer No:'+str(ind) \
+                        +' parameters of model. \n'\
+                        'Loaded model are not proper.\n' + \
+                        'Model :' + str(trainable.shape) + \
+                        '\tLoaded :' +str(t_shape))
+            layer.trainable = w[ind]
+        # if everythings passed, print the success.
+        if os.path.isfile(fName):
+            print('Model weights of `' + fName + '` loaded successfully..')
+
+    def get_model_summary(self, show=True, save=False, summary_name='gNet_model_summary.txt', show_pre_layers = False):
+        '''
+            Get model summary of Neural Network. Summary can be showed, saved or both of them.
+
+            Arguments:
+            ---------
+                
+                show                : show the figure of loss during training.
+                    >>> type        : bool
+                    >>> Default     : True
+
+                save                : save the figure of loss during training.
+                    >>> type        : bool
+                    >>> Default     : False
+                     
+                figure_name         : name of file which store the summary of model.
+                    >>> type        : string
+                    >>> Default     : gNet_model_summary.txt
+
+                show_pre_layers     : show previous layer information in summary.
+                    >>> type        : bool
+                    >>> Default     : False
+        '''
+        # create texttable
+        params_no = 0
+        t = Texttable()
+
+        t.add_rows([['Layer No (Previous Layer) | Layer', 'Output Shape', '# of Parameters']])
+        for layer in self.get_layers():
+            if layer._layerNo >0:
+                fCol = str(layer._layerNo)+'('+str(layer._preLayer._layerNo)
+                if show_pre_layers:
+                    fCol += ' ' + layer._preLayer._layer_name 
+                fCol += ')' + ' | '+ layer._layer_name
+            else:
+                fCol = str(layer._layerNo)+ ': '+ layer._layer_name
+            tmp = [fCol, layer._layer_output_shape, layer._numOfParams]
+            params_no += layer._numOfParams
+            t.add_row(tmp)
+        t.add_row(['Total', ' ', '{:,}'.format(params_no)])
+        if show:
+            print(t.draw())
+        if save:
+            f = open(summary_name, 'w')
+            f.write(t.draw())
 
     @property
     def trainable(self):
@@ -225,16 +384,16 @@ class Dense(Layer):
         self._set_initializer()
         self._weight_regularizer = weight_regularizer
         self._bias_regularizer = bias_regularizer
+        self._layer_name = "Dense : " + str(self._activation)
+        self._act_name = self._activation
+        self._layer_output_shape = self._neuronNumber
 
-    def __call__(self, params) -> None:
+    def __call__(self, Layer: Layer = None) -> None:
         '''
             Update of some of model parameters and class parameters.
         '''
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('Dense : ' + str(self._activation))
-        params['activation'].append(self._activation)
-        params['model_neuron'].append(self._neuronNumber)
-        params['layer_output_shape'].append(self._neuronNumber)
+        # connect layer to this layer
+        self._connect_layer(Layer)
 
         # if activation function is `str` create caller.
         if isinstance(self._activation, str):
@@ -242,27 +401,32 @@ class Dense(Layer):
         else:
             self._actCaller = self._activation
 
-        self._init_trainable(params)
+        self._init_trainable()
 
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         '''
             Initialization of dense layer's trainable variables.
         '''
-        if self._thisLayer == 0:
+        if self._layerNo == 0:
             row = 1
             col = 1
         else:
-            row = params['layer_output_shape'][self._thisLayer-1]
+            #row = params['layer_output_shape'][self._thisLayer-1]
+            row = self._preLayer._layer_output_shape
             if (type(row)==tuple):
-                row = params['layer_output_shape'][self._thisLayer-1][0]
-            col = params['layer_output_shape'][self._thisLayer]
+                #row = params['layer_output_shape'][self._thisLayer-1][0]
+                row = self._preLayer._layer_output_shape[0]
+            #col = params['layer_output_shape'][self._thisLayer]
+            col = self._layer_output_shape
             if (type(col)==tuple):
-                col = params['layer_output_shape'][self._thisLayer][0]
-            
+                #col = params['layer_output_shape'][self._thisLayer][0]
+                col = self._layer_output_shape[0]
+
         _w_shape = (row, col)
         _b_shape = [col]
 
-        params['#parameters'].append(row*col+col)
+        #params['#parameters'].append(row*col+col)
+        self._numOfParams = row * col + col
 
         # get initialized values of weight and biases
         _w, _b = self._get_inits(_w_shape, _b_shape)
@@ -316,15 +480,16 @@ class Flatten(Layer):
     def __init__(self, input_shape=None, **kwargs):
         super(Flatten, self).__init__(**kwargs)
         self._input_shape = input_shape
+        self._layer_name = "flatten"
+        self._act_name = "none"
+        self._numOfParams = 0
 
-    def __call__(self, params) -> None:
+    def __call__(self, Layer: Layer = None) -> None:
         '''
             Update of some of model parameters and class parameters.
         '''
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('flatten')
-        params['activation'].append('none')
-        params['#parameters'].append(0)
+        # connect layer to this layer
+        self._connect_layer(Layer)
 
         self._neuronNumber = 1
         # If flatten layer is the first layer of model, input_shape should be declared.
@@ -332,21 +497,17 @@ class Flatten(Layer):
             # calculate flattened layer neuron number
             for item in self._input_shape:
                 self._neuronNumber *= item
-            self._output_shape = self._neuronNumber
+            self._layer_output_shape = self._neuronNumber
 
         else:
             # we should calculate shape of input. we should know previous layer output shape
             self._neuronNumber = 1
-            assert self._thisLayer != 0, 'Please make sure that flatten layer is not first layer. \n\
+            assert self._layerNo != 0, 'Please make sure that flatten layer is not first layer. \n\
             If it is first layer, give it input_shape.'
-            for item in params['layer_output_shape'][self._thisLayer - 1]:
+            #for item in params['layer_output_shape'][self._thisLayer - 1]:
+            for item in self._preLayer._layer_output_shape:
                 self._neuronNumber *= item
-            self._output_shape = self._neuronNumber
-
-        # add output shape to model params
-        params['layer_output_shape'].append(self._output_shape)
-        # add flattened layer neuron number to model params
-        params['model_neuron'].append(self._neuronNumber)
+            self._layer_output_shape = self._neuronNumber
 
     def _init_trainable(self, params):
         # flatten layer has no initialized parameters. Thus, pass it.
@@ -381,26 +542,26 @@ class Activation(Layer):
         super(Activation, self).__init__(**kwargs)
         if activation_function == None:
             activation_function = 'none'
-        self._activation = activation_function
+        self._act_name = activation_function
+        self._layer_name = 'Activation Layer :' + str(self._act_name)
 
-    def __call__(self, params) -> None:
+    def __call__(self, Layer: Layer = None) -> None:
         """
             Update some model and class parameters.
         """
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('Activation Layer :' + str(self._activation))
-        params['activation'].append(self._activation)
-        params['#parameters'].append(0)
-        params['model_neuron'].append(params['model_neuron'][self._thisLayer - 1])
-        params['layer_output_shape'].append(params['layer_output_shape'][self._thisLayer - 1])
+        # connect layer to this layer
+        self._connect_layer(Layer)
+
+        # assign output shape of layer
+        self._layer_output_shape = self._preLayer._layer_output_shape
 
         # if activation function is `str` create caller.
-        if isinstance(self._activation, str):
-            self._actCaller = self._actFuncCaller[self._activation]()
+        if isinstance(self._act_name, str):
+            self._actCaller = self._actFuncCaller[self._act_name]()
         else:
-            self._actCaller = self._activation
+            self._actCaller = self._act_name
 
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         # Activation layer has no initialized parameters. Thus, pass it.
         pass
 
@@ -507,15 +668,18 @@ class Conv1D(Layer):
         self._set_initializer()
         self._kernel_regularizer = kernel_regularizer
         self._bias_regularizer = bias_regularizer
+        self._layer_name = "Conv1D"
+        self._act_name = "none"
 
-    def __call__(self, params) -> None:
+    def __call__(self, Layer: Layer = None) -> None:
         '''
             Update of some of model parameters and class parameters.
         '''
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('Conv1D')
-        params['activation'].append('none')
-        params['#parameters'].append(self._filter * self._K + self._filter)
+        # connect layer to this layer
+        self._connect_layer(Layer)
+
+        # assign number of parameters of layer
+        self._numOfParams = self._filter * self._K + self._filter
 
         # If Conv1D layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -525,8 +689,8 @@ class Conv1D(Layer):
         else:
             # Conv1D layer is not first layer. So get channel and width 
             # of data from previous layer output shape
-            assert self._thisLayer != 0, 'First layer of Conv1D should have input_shape!'
-            self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
+            assert self._layerNo != 0, 'First layer of Conv1D should have input_shape!'
+            self._C, self._W = self._preLayer._layer_output_shape
 
         if self._padding == 'same':
             # To handle even size kernel padding, we put more constant to right and bottom side 
@@ -542,16 +706,11 @@ class Conv1D(Layer):
 
         self._P = (pd_left, pd_right)
 
-        self._output_shape = (self._filter, self._O)
+        self._layer_output_shape = (self._filter, self._O)
 
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add flattened layer neuron number to model params
-        params['model_neuron'].append(self._filter)
+        self._init_trainable()
 
-        self._init_trainable(params)
-
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         '''
             Initialization of Conv1D layer's trainable variables.
         '''
@@ -697,15 +856,17 @@ class Conv2D(Layer):
         self._set_initializer()
         self._kernel_regularizer = kernel_regularizer
         self._bias_regularizer = bias_regularizer
+        self._layer_name = "Conv2D"
+        self._act_name = "none"
 
-    def __call__(self, params) -> None:
+    def __call__(self, Layer: Layer = None) -> None:
         '''
             Update of some of model parameters and class parameters.
         '''
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('Conv2D')
-        params['activation'].append('none')
-        params['#parameters'].append(self._filter * self._HH * self._WW + self._filter)
+        # connect layer to this layer
+        self._connect_layer(Layer)
+        
+        self._numOfParams = self._filter * self._HH * self._WW + self._filter
 
         # If Conv2D layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -715,8 +876,8 @@ class Conv2D(Layer):
         else:
             # Conv2D layer is not first layer. So get channel, width and height
             # of data from previous layer output shape
-            assert self._thisLayer != 0, 'First layer of Conv2D should have input_shape!'
-            self._C, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
+            assert self._layerNo != 0, 'First layer of Conv2D should have input_shape!'
+            self._C, self._H, self._W = self._preLayer._layer_output_shape
 
         if self._padding == 'same':
             # To handle even size kernel padding, we put more constant to right and bottom side 
@@ -737,17 +898,11 @@ class Conv2D(Layer):
             
         self._P = ((pd_top, pd_bot), (pd_left, pd_right))  
 
-        self._output_shape = (self._filter, self.H_out, self.W_out)
+        self._layer_output_shape = (self._filter, self.H_out, self.W_out)
 
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add flattened layer neuron number to model params
-        params['model_neuron'].append(self._filter)
+        self._init_trainable()
 
-        #self.fil = open('trainables.txt', 'a')
-        self._init_trainable(params)
-
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         '''
             Initialization of Conv2D layer's trainable variables.
         '''
@@ -775,7 +930,7 @@ class Conv2D(Layer):
                 ((0,0),(0,0),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
                     mode='constant', constant_values=0)
         # location of local space
-        k, i, j = conv_util.get_im2col_indices(inputs.shape, (self._HH, self._WW), (self._stride_row, self._stride_col), self._output_shape )
+        k, i, j = conv_util.get_im2col_indices(inputs.shape, (self._HH, self._WW), (self._stride_row, self._stride_col), self._layer_output_shape )
         # get local spaces of inputs
         value = inputs[:, k, i, j].value
         # flat the local spaces
@@ -891,14 +1046,15 @@ class Conv3D(Layer):
         self._set_initializer()
         self._kernel_regularizer = kernel_regularizer
         self._bias_regularizer = bias_regularizer
+        self._layer_name = "Conv3D"
+        self._act_name = "none"
 
-    def __call__(self, params) -> None:
+    def __call__(self, Layer: Layer = None) -> None:
         '''
             Update of some of model parameters and class parameters.
         '''
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('Conv3D')
-        params['activation'].append('none')
+        # connect layer to this layer
+        self._connect_layer(Layer)
 
         # If Conv3D layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -908,10 +1064,10 @@ class Conv3D(Layer):
         else:
             # Conv3D layer is not first layer. So get channel, depth, width and height
             # of data from previous layer output shape
-            assert self._thisLayer != 0, 'First layer of Conv3D should have input_shape!'
-            self._C, self._D, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
+            assert self._layerNo != 0, 'First layer of Conv3D should have input_shape!'
+            self._C, self._D, self._H, self._W = self._preLayer._layer_output_shape
 
-        params['#parameters'].append(self._filter * self._K_shape[0] * self._K_shape[1] * self._K_shape[2] * self._C + self._filter)
+        self._numOfParams = self._filter * self._K_shape[0] * self._K_shape[1] * self._K_shape[2] * self._C + self._filter
 
         if self._padding == 'same':
             # To handle even size kernel padding, we put more constant to right and bottom side 
@@ -938,18 +1094,11 @@ class Conv3D(Layer):
         
         self._P = ((pd_top, pd_bot), (pd_left, pd_right), (pd_front, pd_back))     
         
+        self._layer_output_shape = (self._filter, self.D_out, self.H_out, self.W_out)
 
-        self._output_shape = (self._filter, self.D_out, self.H_out, self.W_out)
+        self._init_trainable()
 
-        
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add flattened layer neuron number to model params
-        params['model_neuron'].append(self._filter)
-
-        self._init_trainable(params)
-
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         '''
             Initialization of Conv3D layer's trainable variables.
         '''
@@ -979,7 +1128,7 @@ class Conv3D(Layer):
                 ((0,0),(0,0),(self._P[2][0],self._P[2][1]),(self._P[0][0], self._P[0][1]),(self._P[1][0], self._P[1][1])), \
                     mode='constant', constant_values=0)
         # location of local space
-        l, k, i, j = conv_util.get_conv3D_indices(base_shape, self._K_shape, self._stride, self._output_shape)
+        l, k, i, j = conv_util.get_conv3D_indices(base_shape, self._K_shape, self._stride, self._layer_output_shape)
         # get local spaces of inputs
         value = inputs[:,l, k, i, j].value
         # flat the local spaces
@@ -1050,12 +1199,12 @@ class MaxPool1D(Layer):
         self._K = kernel
         self._stride = stride
         self._padding = padding.lower()
+        self._layer_name = "MaxPool1D"
+        self._act_name = "none"
 
-    def __call__(self, params) -> None:
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('MaxPool1D')
-        params['activation'].append('none')
-        params['#parameters'].append(0)
+    def __call__(self, Layer: Layer = None) -> None:
+        # connect layer to this layer        
+        self._connect_layer(Layer)
 
         # If MaxPool1D layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -1064,7 +1213,7 @@ class MaxPool1D(Layer):
         else:
             # MaxPool1D layer is not first layer. So get channel and width 
             # of data from previous layer output shape
-            self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
+            self._C, self._W = self._preLayer._layer_output_shape
 
         if self._padding == 'same':
             # To handle even size kernel padding, we put more constant to right and bottom side 
@@ -1080,14 +1229,9 @@ class MaxPool1D(Layer):
         
         self._P = (pd_left, pd_right)
 
-        self._output_shape = (self._C, self._O)
+        self._layer_output_shape = (self._C, self._O)
 
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add channel number to layer neuron number into model params
-        params['model_neuron'].append(self._C)
-
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         # MaxPool1D layer has no initialized parameters. Thus, pass it.
         pass
 
@@ -1171,12 +1315,12 @@ class MaxPool2D(Layer):
         self._stride_row = stride[0]
         self._stride_col = stride[1]
         self._padding = padding.lower()
+        self._layer_name = "MaxPool2D"
+        self._act_name = "none"
 
-    def __call__(self, params) -> None:
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('MaxPool2D')
-        params['activation'].append('none')
-        params['#parameters'].append(0)
+    def __call__(self, Layer: Layer = None) -> None:
+        # connect layer to this layer
+        self._connect_layer(Layer)
 
         # If MaxPool2D layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -1185,7 +1329,7 @@ class MaxPool2D(Layer):
         else:
             # MaxPool2D layer is not first layer. So get channel, width and height
             # of data from previous layer output shape
-            self._C, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
+            self._C, self._H, self._W = self._preLayer._layer_output_shape
 
         if self._padding == 'same':
             # To handle even size kernel padding, we put more constant to right and bottom side 
@@ -1206,14 +1350,9 @@ class MaxPool2D(Layer):
             
         self._P = ((pd_top, pd_bot), (pd_left, pd_right))  
 
-        self._output_shape = (self._C, self.H_out, self.W_out)
+        self._layer_output_shape = (self._C, self.H_out, self.W_out)
 
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add channel number to layer neuron number into model params
-        params['model_neuron'].append(self._C)
-
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         # MaxPool2D layer has no initialized parameters. Thus, pass it.
         pass
 
@@ -1233,7 +1372,7 @@ class MaxPool2D(Layer):
         # getting temp input shape
         tmp = inputs.shape
         # findin pooling locations
-        k, i, j = conv_util.get_im2col_indices(inputs.shape, (self._HH, self._WW), (self._stride_row, self._stride_col), self._output_shape)
+        k, i, j = conv_util.get_im2col_indices(inputs.shape, (self._HH, self._WW), (self._stride_row, self._stride_col), self._layer_output_shape)
         # getting local spaces
         inputs = inputs[:, k,i,j]
         # arrange dimensions
@@ -1301,12 +1440,12 @@ class MaxPool3D(Layer):
         self._K_shape = kernel
         self._stride = stride
         self._padding = padding.lower()
+        self._layer_name = "MaxPool3D"
+        self._act_name = 'none'
 
-    def __call__(self, params) -> None:
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('MaxPool3D')
-        params['activation'].append('none')
-        params['#parameters'].append(0)
+    def __call__(self, Layer: Layer = None) -> None:
+        # connect layer to this layer
+        self._connect_layer(Layer)
 
         # If MaxPool3D layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -1315,7 +1454,7 @@ class MaxPool3D(Layer):
         else:
             # MaxPool3D layer is not first layer. So get channel, width and height
             # of data from previous layer output shape
-            self._C, self._D, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
+            self._C, self._D, self._H, self._W = self._preLayer._layer_output_shape
 
         if self._padding == 'same':
             # To handle even size kernel padding, we put more constant to right and bottom side 
@@ -1343,14 +1482,9 @@ class MaxPool3D(Layer):
         
         self._P = ((pd_top, pd_bot), (pd_left, pd_right), (pd_front, pd_back))   
 
-        self._output_shape = (self._C, self.D_out, self.H_out, self.W_out)
+        self._layer_output_shape = (self._C, self.D_out, self.H_out, self.W_out)
 
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add channel number to layer neuron number into model params
-        params['model_neuron'].append(self._C)
-
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         # MaxPool3D layer has no initialized parameters. Thus, pass it.
         pass
 
@@ -1368,7 +1502,7 @@ class MaxPool3D(Layer):
         # reshape inputs
         inputs = T.reshape(inputs, (N * C, 1, D, H, W))
         # findin pooling locations
-        l, k, i, j = conv_util.get_conv3D_indices(inputs.shape, self._K_shape, self._stride, self._output_shape)
+        l, k, i, j = conv_util.get_conv3D_indices(inputs.shape, self._K_shape, self._stride, self._layer_output_shape)
         # getting local spaces
         inputs = inputs[:,l, k,i,j]
         # arrange dimensions
@@ -1435,12 +1569,12 @@ class AveragePool1D(Layer):
         self._K = kernel
         self._stride = stride
         self._padding = padding.lower()
+        self._layer_name = "AveragePool1D"
+        self._act_name = "none"
         
-    def __call__(self, params) -> None:
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('AveragePool1D')
-        params['activation'].append('none')
-        params['#parameters'].append(0)
+    def __call__(self, Layer: Layer = None) -> None:
+        # connect layer to this layer
+        self._connect_layer(Layer)
 
         # If AveragePool1D layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -1449,7 +1583,7 @@ class AveragePool1D(Layer):
         else:
             # AveragePool1D layer is not first layer. So get channel and width 
             # of data from previous layer output shape
-            self._C, self._W = params['layer_output_shape'][self._thisLayer - 1]
+            self._C, self._W = self._preLayer._layer_output_shape
 
         if self._padding == 'same':
             # To handle even size kernel padding, we put more constant to right and bottom side 
@@ -1466,14 +1600,9 @@ class AveragePool1D(Layer):
         
         self._P = (pd_left, pd_right)
         
-        self._output_shape = (self._C, self._O)
+        self._layer_output_shape = (self._C, self._O)
 
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add channel number to layer neuron number into model params
-        params['model_neuron'].append(self._C)
-
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         # AveragePool1D layer has no initialized parameters. Thus, pass it.
         pass
 
@@ -1558,12 +1687,12 @@ class AveragePool2D(Layer):
         self._stride_row = stride[0]
         self._stride_col = stride[1]
         self._padding = padding.lower()
+        self._layer_name = "AveragePool2D"
+        self._act_name = "none"
 
-    def __call__(self, params) -> None:
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('AveragePool2D')
-        params['activation'].append('none')
-        params['#parameters'].append(0)
+    def __call__(self, Layer: Layer = None) -> None:
+        # connect layer to this layer
+        self._connect_layer(Layer)
 
         # If AveragePool2D layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -1572,7 +1701,7 @@ class AveragePool2D(Layer):
         else:
             # AveragePool2D layer is not first layer. So get channel, width and height
             # of data from previous layer output shape
-            self._C, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
+            self._C, self._H, self._W = self._preLayer._layer_output_shape
 
         if self._padding == 'same':
             # To handle even size kernel padding, we put more constant to right and bottom side 
@@ -1593,14 +1722,9 @@ class AveragePool2D(Layer):
             
         self._P = ((pd_top, pd_bot), (pd_left, pd_right))  
 
-        self._output_shape = (self._C, self.H_out, self.W_out)
+        self._layer_output_shape = (self._C, self.H_out, self.W_out)
 
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add channel number to layer neuron number into model params
-        params['model_neuron'].append(self._C)
-
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         # AveragePool2D layer has no initialized parameters. Thus, pass it.
         pass
 
@@ -1620,7 +1744,7 @@ class AveragePool2D(Layer):
         # getting temp input shape
         tmp = inputs.shape
         # findin pooling locations
-        k, i, j = conv_util.get_im2col_indices(inputs.shape, (self._HH, self._WW), (self._stride_row, self._stride_col), self._output_shape)
+        k, i, j = conv_util.get_im2col_indices(inputs.shape, (self._HH, self._WW), (self._stride_row, self._stride_col), self._layer_output_shape)
         # getting local spaces
         inputs = inputs[:, k,i,j]
         # arrange dimensions
@@ -1686,12 +1810,12 @@ class AveragePool3D(Layer):
         self._K_shape = kernel
         self._stride = stride
         self._padding = padding.lower()
-
-    def __call__(self, params) -> None:
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('AveragePool3D')
-        params['activation'].append('none')
-        params['#parameters'].append(0)
+        self._layer_name = "AveragePool3D"
+        self._act_name = "none"
+        
+    def __call__(self, Layer: Layer = None) -> None:
+        # connect layer to this layer
+        self._connect_layer(Layer)
 
         # If AveragePool3D layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -1700,7 +1824,7 @@ class AveragePool3D(Layer):
         else:
             # AveragePool3D layer is not first layer. So get channel, width and height
             # of data from previous layer output shape
-            self._C, self._D, self._H, self._W = params['layer_output_shape'][self._thisLayer - 1]
+            self._C, self._D, self._H, self._W = self._preLayer._layer_output_shape
 
         if self._padding == 'same':
             # To handle even size kernel padding, we put more constant to right and bottom side 
@@ -1728,14 +1852,9 @@ class AveragePool3D(Layer):
         
         self._P = ((pd_top, pd_bot), (pd_left, pd_right), (pd_front, pd_back))   
 
-        self._output_shape = (self._C, self.D_out, self.H_out, self.W_out)
+        self._layer_output_shape = (self._C, self.D_out, self.H_out, self.W_out)
 
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add channel number to layer neuron number into model params
-        params['model_neuron'].append(self._C)
-
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         # AveragePool3D layer has no initialized parameters. Thus, pass it.
         pass
 
@@ -1753,7 +1872,7 @@ class AveragePool3D(Layer):
         # reshape inputs
         inputs = T.reshape(inputs, (N * C, 1, D, H, W))
         # findin pooling locations
-        l, k, i, j = conv_util.get_conv3D_indices(inputs.shape, self._K_shape, self._stride, self._output_shape)
+        l, k, i, j = conv_util.get_conv3D_indices(inputs.shape, self._K_shape, self._stride, self._layer_output_shape)
         # getting local spaces
         inputs = inputs[:,l, k,i,j]
         # arrange dimensions
@@ -1797,24 +1916,24 @@ class Dropout(Layer):
                 **kwargs):
         super(Dropout, self).__init__(**kwargs)
         self._drop_prob = p
+        self._layer_name = "Dropout (" + str(self._drop_prob) + ")"
+        self._act_name = "none"
 
 
-    def __call__(self, params) -> None:
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('Dropout (' + str(self._drop_prob) + ')')
-        params['activation'].append('none')
-        params['#parameters'].append(0)
+    def __call__(self, Layer: Layer = None) -> None:
+        # connect layer to this layer
+        self._connect_layer(Layer)
 
         # Dropout layer is not first layer. So output shape from previous layer
-        self._output_shape = params['layer_output_shape'][self._thisLayer - 1]
+        self._layer_output_shape = self._preLayer._layer_output_shape
 
         # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
+        #params['layer_output_shape'].append(self._output_shape)
         # add previous layer neuron number to model params
-        params['model_neuron'].append(params['model_neuron'][self._thisLayer - 1])
+        #params['model_neuron'].append(params['model_neuron'][self._thisLayer - 1])
 
 
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         # Dropout layer has no initialized parameters. Thus, pass it.
         pass
 
@@ -1915,19 +2034,19 @@ class BatchNormalization(Layer):
         self._running_var_initializer = running_var_initializer
         self._gamma_regularizer = gamma_regularizer
         self._beta_regularizer = beta_regularizer
+        self._layer_name = "Batch Normalization"
+        self._act_name = "none"
 
-    def __call__(self, params) -> None:
+    def __call__(self, Layer: Layer = None) -> None:
         '''
             Update of some of model parameters and class parameters.
         '''
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('Batch Normalization')
-        params['activation'].append('none')
-        params['model_neuron'].append(params['model_neuron'][self._thisLayer - 1])
-        params['layer_output_shape'].append(params['layer_output_shape'][self._thisLayer - 1])
-        self._init_trainable(params)
+        # connect layer to this layer
+        self._connect_layer(Layer)
+        self._layer_output_shape = self._preLayer._layer_output_shape
+        self._init_trainable()
 
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         '''
             Initialization of batch norm. layer's trainable variables and running mean & variance.
         '''
@@ -1956,7 +2075,7 @@ class BatchNormalization(Layer):
         else:
             self._r_var_init = self._running_mean_initializer
         
-        pre_layer_output = np.array([params['layer_output_shape'][self._thisLayer - 1]])
+        pre_layer_output = np.array([self._preLayer._layer_output_shape])
         
         # if BN after dense layer, parameter shape is different than after conv layers.
         if len(pre_layer_output.shape) == 1:
@@ -1964,7 +2083,8 @@ class BatchNormalization(Layer):
             self._beta = self._beta_init.get_init(shape=pre_layer_output)
             self._r_mean = self._r_mean_init.get_init(shape=pre_layer_output)
             self._r_var = self._r_var_init.get_init(shape=pre_layer_output)
-            params['#parameters'].append(pre_layer_output[0] * 4)
+            #params['#parameters'].append(pre_layer_output[0] * 4)
+            self._numOfParams = pre_layer_output[0] * 4
         else:
             self._trainable_shape = [1,int(pre_layer_output[0][0])]
             for _ in range(len(pre_layer_output[0])-1):
@@ -1975,7 +2095,8 @@ class BatchNormalization(Layer):
             self._beta = self._beta_init.get_init(shape=self._trainable_shape)
             self._r_mean = self._r_mean_init.get_init(shape=self._trainable_shape)
             self._r_var = self._r_var_init.get_init(shape=self._trainable_shape)
-            params['#parameters'].append(pre_layer_output[0][0] * 4)
+            #params['#parameters'].append(pre_layer_output[0][0] * 4)
+            self._numOfParams = pre_layer_output[0][0] * 4
 
         if self._use_gamma:
             self._trainable.append(T.Tensor(self._gamma.astype(np.float32), have_grad=True))
@@ -2134,14 +2255,15 @@ class SimpleRNN(Layer):
         self._kernel_regularizer = kernel_regularizer
         self._hidden_regularizer = hidden_regularizer
         self._bias_regularizer = bias_regularizer
+        self._layer_name = 'SimpleRNN : ' + str(self._activation)
+        self._act_name = str(self._activation)
 
-    def __call__(self, params) -> None:
+    def __call__(self, Layer: Layer = None) -> None:
         '''
             Update of some of model parameters and class parameters.
         '''
-        self._thisLayer = params['layer_number']
-        params['layer_name'].append('SimpleRNN : ' + str(self._activation))
-        params['activation'].append(str(self._activation))
+        # connect layer to this layer
+        self._connect_layer(Layer)
 
         # If SimpleRNN layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -2151,24 +2273,18 @@ class SimpleRNN(Layer):
         else:
             # SimpleRNN layer is not first layer. So get sequential lenght and input size 
             # ofrom previous layer output shape
-            assert self._thisLayer != 0, 'First layer of SimpleRNN should have input_shape!'
-            if isinstance(params['layer_output_shape'][self._thisLayer - 1], int):
-                params['layer_output_shape'][self._thisLayer - 1] = [params['layer_output_shape'][self._thisLayer - 1]]
-            assert len(params['layer_output_shape'][self._thisLayer - 1]) == 2, 'Previous RNN layer`s `return_sequences` should be True'
-            self._seq_len, self._inp_size = params['layer_output_shape'][self._thisLayer - 1]  
+            assert self._layerNo != 0, 'First layer of SimpleRNN should have input_shape!'
+            if isinstance(self._preLayer._layer_output_shape, int):
+                self._preLayer._layer_output_shape = [self._preLayer._layer_output_shape]
+            assert len(self._preLayer._layer_output_shape) == 2, 'Previous RNN layer`s `return_sequences` should be True'
+            self._seq_len, self._inp_size = self._preLayer._layer_output_shape
 
         if self._ret_seq:
-            self._output_shape = (self._seq_len, self._cell)
+            self._layer_output_shape = (self._seq_len, self._cell)
         else:
-            self._output_shape = (self._cell)
+            self._layer_output_shape = (self._cell)
 
-
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add layer neuron number to model params
-        params['model_neuron'].append(self._cell)
-        # add number of parameters 
-        params['#parameters'].append(self._cell * ( self._cell + self._inp_size + 1))
+        self._numOfParams = self._cell * ( self._cell + self._inp_size + 1)
 
         # if activation function is `str` create caller.
         if isinstance(self._activation, str):
@@ -2176,9 +2292,9 @@ class SimpleRNN(Layer):
         else:
             self._actCaller = self._activation
 
-        self._init_trainable(params)
+        self._init_trainable()
 
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         '''
             Initialization of SimpleRNN layer's trainable variables.
         '''
@@ -2350,15 +2466,15 @@ class LSTM(Layer):
         self._kernel_regularizer = kernel_regularizer
         self._hidden_regularizer = hidden_regularizer
         self._bias_regularizer = bias_regularizer
+        self._act_name = str('(Kernel : ' + str(self._activation)+ ' & Hidden : ' + str(self._hidden_activation) + ')')
+        self._layer_name = 'LSTM : ' + self._act_name
 
-    def __call__(self, params) -> None:
+    def __call__(self, Layer: Layer = None) -> None:
         '''
             Update of some of model parameters and class parameters.
         '''
-        self._thisLayer = params['layer_number']
-        act_name = str('(Kernel : ' + str(self._activation)+ ' & Hidden : ' + str(self._hidden_activation) + ')')
-        params['layer_name'].append('LSTM : ' + act_name)
-        params['activation'].append(act_name)
+        # connect layer to this layer
+        self._connect_layer(Layer)
 
         # If LSTM layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -2368,24 +2484,18 @@ class LSTM(Layer):
         else:
             # SimpleRNN layer is not first layer. So get sequential lenght and input size 
             # ofrom previous layer output shape
-            assert self._thisLayer != 0, 'First layer of LSTM should have input_shape!'
-            if isinstance(params['layer_output_shape'][self._thisLayer - 1], int):
-                params['layer_output_shape'][self._thisLayer - 1] = [params['layer_output_shape'][self._thisLayer - 1]]
-            assert len(params['layer_output_shape'][self._thisLayer - 1]) == 2, 'Previous RNN layer`s `return_sequences` should be True'
-            self._seq_len, self._inp_size = params['layer_output_shape'][self._thisLayer - 1]  
+            assert self._layerNo != 0, 'First layer of LSTM should have input_shape!'
+            if isinstance(self._preLayer._layer_output_shape, int):
+                self._preLayer._layer_output_shape = [self._preLayer._layer_output_shape]
+            assert len(self._preLayer._layer_output_shape) == 2, 'Previous RNN layer`s `return_sequences` should be True'
+            self._seq_len, self._inp_size = self._preLayer._layer_output_shape
 
         if self._ret_seq:
-            self._output_shape = (self._seq_len, self._cell)
+            self._layer_output_shape = (self._seq_len, self._cell)
         else:
-            self._output_shape = (self._cell)
+            self._layer_output_shape = (self._cell)
 
-
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add layer neuron number to model params
-        params['model_neuron'].append(self._cell)
-        # add number of parameters 
-        params['#parameters'].append(4 * self._cell * ( self._cell + self._inp_size + 1))
+        self._numOfParams = 4 * self._cell * ( self._cell + self._inp_size + 1)
 
         # if activation function is `str` create caller.
         if isinstance(self._activation, str):
@@ -2399,9 +2509,9 @@ class LSTM(Layer):
         else:
             self._hidden_actCaller = self._hidden_activation
 
-        self._init_trainable(params)
+        self._init_trainable()
 
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         '''
             Initialization of LSTM layer's trainable variables.
         '''
@@ -2457,7 +2567,7 @@ class LSTM(Layer):
         # initializer hidden matrix and cell state as zeros
         h_init = ID['zeros_init']()
         c_init = ID['zeros_init']()
-        h = T.Tensor(h_init.get_init((inputs.shape[0],self._cell)))
+        h = T.Tensor(h_init.get_init((inputs.shape[0],self._cell)), True)
         cell_state = T.Tensor(c_init.get_init((inputs.shape[0],self._cell)))
 
         # sequential output holder        
@@ -2618,15 +2728,15 @@ class GRU(Layer):
         self._kernel_regularizer = kernel_regularizer
         self._hidden_regularizer = hidden_regularizer
         self._bias_regularizer = bias_regularizer
+        self._act_name = str('(Kernel : ' + str(self._activation)+ ' & Hidden : ' + str(self._hidden_activation) + ')')
+        self._layer_name = 'GRU : ' + self._act_name
 
-    def __call__(self, params) -> None:
+    def __call__(self, Layer: Layer = None) -> None:
         '''
             Update of some of model parameters and class parameters.
         '''
-        self._thisLayer = params['layer_number']
-        act_name = str('(Kernel : ' + str(self._activation)+ ' & Hidden : ' + str(self._hidden_activation) + ')')
-        params['layer_name'].append('GRU : ' + act_name )
-        params['activation'].append(act_name)
+        # connect layer to this layer
+        self._connect_layer(Layer)
 
         # If GRU layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
@@ -2636,23 +2746,18 @@ class GRU(Layer):
         else:
             # SimpleRNN layer is not first layer. So get sequential lenght and input size 
             # ofrom previous layer output shape
-            assert self._thisLayer != 0, 'First layer of GRU should have input_shape!'
-            if isinstance(params['layer_output_shape'][self._thisLayer - 1], int):
-                params['layer_output_shape'][self._thisLayer - 1] = [params['layer_output_shape'][self._thisLayer - 1]]
-            assert len(params['layer_output_shape'][self._thisLayer - 1]) == 2, 'Previous RNN layer`s `return_sequences` should be True'
-            self._seq_len, self._inp_size = params['layer_output_shape'][self._thisLayer - 1]  
+            assert self._layerNo != 0, 'First layer of GRU should have input_shape!'
+            if isinstance(self._preLayer._layer_output_shape, int):
+                self._preLayer._layer_output_shape = [self._preLayer._layer_output_shape]
+            assert len(self._preLayer._layer_output_shape) == 2, 'Previous RNN layer`s `return_sequences` should be True'
+            self._seq_len, self._inp_size = self._preLayer._layer_output_shape
 
         if self._ret_seq:
-            self._output_shape = (self._seq_len, self._cell)
+            self._layer_output_shape = (self._seq_len, self._cell)
         else:
-            self._output_shape = (self._cell)
+            self._layer_output_shape = (self._cell)
 
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(self._output_shape)
-        # add layer neuron number to model params
-        params['model_neuron'].append(self._cell)
-        # add number of parameters 
-        params['#parameters'].append(3 * self._cell * ( self._cell + self._inp_size + 1))
+        self._numOfParams = 3 * self._cell * ( self._cell + self._inp_size + 1)
 
         # if activation function is `str` create caller.
         if isinstance(self._activation, str):
@@ -2666,9 +2771,9 @@ class GRU(Layer):
         else:
             self._hidden_actCaller = self._hidden_activation
 
-        self._init_trainable(params)
+        self._init_trainable()
 
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         '''
             Initialization of GRU layer's trainable variables.
         '''
@@ -2822,56 +2927,44 @@ class TimeDistributed(Layer):
         assert isinstance(self._time_layer, Layer), "Input layer of TimeDistributed is not the layer of gNet!"
         self._input_shape = input_shape
         
-    def __call__(self, params) -> None:
+    def __call__(self, Layer: Layer = None) -> None:
         '''
             Update of some of model parameters and class parameters.
         '''
-        self._thisLayer = params['layer_number']
+        # connect layer to this layer
+        self._connect_layer(Layer)
         
         # If TD layer is the first layer of model, input_shape should be declared.
         if self._input_shape != None:
             assert len(self._input_shape) >= 2, 'Make sure that input of TimeDistributed has minimum 2 dimension without batch such as (10,5).'
         else:
             # If TD layer is not first layer, get input shape from previous layer.
-            self._input_shape = params['layer_output_shape'][self._thisLayer - 1]
-
-        # temporary parameters for calculating basic properties of layer of self._time_layer.
-        _temp_params = {
-            'layer_number': 1,
-            'layer_name' : [],
-            'activation' : [],
-            'model_neuron' : [],
-            'layers' : [], 
-            'layer_output_shape' : [(self._input_shape[1:])],
-            '#parameters' : []
-        }
+            self._input_shape = self._preLayer._layer_output_shape
 
         # calculate basic properties of self._time_layer
-        self._time_layer(_temp_params)
+        self._time_layer(Layer)
         
-        act_name = str('TimeDistributed : ' + str(_temp_params['layer_name'][-1]))
-        params['layer_name'].append(act_name)
-        params['activation'].append(act_name)
+        self._act_name = str('TimeDistributed : ' + str(self._time_layer._layer_name))
+        
+        self._layer_name = self._act_name
                 
         # output shape
-        self._output_shape = []
-        self._output_shape.append(self._input_shape[0])
-        if (type(_temp_params['layer_output_shape'][-1]) == int):
-            self._output_shape.append(_temp_params['layer_output_shape'][-1])
+        self._layer_output_shape = []
+        self._layer_output_shape.append(self._input_shape[0])
+        if (type(self._time_layer._layer_output_shape) == int):
+            self._layer_output_shape.append(self._time_layer._layer_output_shape)
         else:
-            [self._output_shape.append(item) for item in _temp_params['layer_output_shape'][-1]]
+            [self._layer_output_shape.append(item) for item in self._time_layer._layer_output_shape]
         
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(tuple(self._output_shape))
-        # add layer neuron number to model params
-        params['model_neuron'].append(_temp_params['model_neuron'][-1])
+        self._layer_output_shape = tuple(self._layer_output_shape)
+
         # add number of parameters 
-        params['#parameters'].append(_temp_params['#parameters'][-1])
+        self._numOfParams =  self._time_layer._numOfParams
 
         # passing trainables of self._time_layer to TD layer to update and optimize.
         [self._trainable.append(trainable) for trainable in self._time_layer._trainable]
 
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         '''
             Initialization of TD layer's trainable variables.
         '''
@@ -2900,7 +2993,7 @@ class TimeDistributed(Layer):
         # final shape of output
         final_shape = []
         final_shape.append(base_shape[0])
-        [final_shape.append(item) for item in self._output_shape]
+        [final_shape.append(item) for item in self._layer_output_shape]
 
         # reshape output
         inputs = T.reshape(temp, final_shape)
@@ -2942,33 +3035,27 @@ class RepeatVector(Layer):
         super(RepeatVector, self).__init__(**kwargs)
         assert type(repeat_number) == int, "repeat_number should be integer!"
         self._repeat = repeat_number
+        self._layer_name = str('RepeatVector : ' + str(self._repeat))
+        self._act_name = "none"
         
-    def __call__(self, params) -> None:
+    def __call__(self, Layer: Layer = None) -> None:
         '''
             Update of some of model parameters and class parameters.
         '''
-        self._thisLayer = params['layer_number']
-        
-        act_name = str('RepeatVector : ' + str(self._repeat))
-        params['layer_name'].append(act_name)
-        params['activation'].append('none')
+        # connect layer to this layer
+        self._connect_layer(Layer)
                 
         # output shape
-        self._output_shape = []
-        self._output_shape.append(self._repeat)
-        if (type(params['layer_output_shape'][-1]) == int):
-            self._output_shape.append(params['layer_output_shape'][-1])
+        self._layer_output_shape = []
+        self._layer_output_shape.append(self._repeat)
+        if (type(self._preLayer._layer_output_shape) == int):
+            self._layer_output_shape.append(self._preLayer._layer_output_shape)
         else:
-            [self._output_shape.append(item) for item in params['layer_output_shape'][-1]]
+            [self._layer_output_shape.append(item) for item in self._preLayer._layer_output_shape]
         
-        # add output shape to model params without batch_size
-        params['layer_output_shape'].append(tuple(self._output_shape))
-        # add layer neuron number to model params
-        params['model_neuron'].append(self._repeat)
-        # add number of parameters 
-        params['#parameters'].append(0)
+        self._layer_output_shape = tuple(self._layer_output_shape)
 
-    def _init_trainable(self, params):
+    def _init_trainable(self):
         '''
             Initialization of RepeatVector layer's trainable variables.
         '''
