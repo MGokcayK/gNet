@@ -24,11 +24,13 @@
 
     Author : @MGokcayK 
     Create : 30 / 03 / 2020
-    Update : 03 / 09 / 2020
-                Added Orthogonal initialization class.
+    Update : 26 / 12 / 2020
+                Adding REGISTER_INITIALIZER function.
 """
 
 import numpy as np
+
+__initializeDeclaretion = {}
 
 class Initializer:
     """
@@ -270,7 +272,7 @@ class Orthogonal(Initializer):
     Arguments :
     -----------
 
-        shape   : Shape of orthogonal init.            
+        shape   : Shape of orthogonal init.               
         
     Ex: we want 10x5 orthogonal matrix.
 
@@ -285,16 +287,29 @@ class Orthogonal(Initializer):
         _, _, Vt = np.linalg.svd(X, full_matrices=False)
 
         return Vt.reshape(shape)
+        
 
+def REGISTER_INITIALIZER(initializer : Initializer, call_name : str):
+    """
+        Register Initializer w.r.t `call_name`. 
 
-__initializeDeclaretion = {
-                            'he_normal' : He_normal,
-                            'he_uniform' : He_uniform,
-                            'ones_init' : Ones_init,
-                            'zeros_init' : Zeros_init,
-                            'normal_init' : Normal_init,
-                            'uniform_init' : Uniform_init,
-                            'xavier_normal' : Xavier_normal,
-                            'xavier_uniform' : Xavier_uniform,
-                            'orthogonal' : Orthogonal
-                        }
+        Arguments :
+        -----------
+
+        initializer     : Initializer class.
+        >>>    type     : gNet.initializer.Initializer()
+
+        call_name       : Calling name of initializer. It will be lowercase. It is not sensible.
+        >>>    type     : str
+    """
+    __initializeDeclaretion.update({call_name.lower() : initializer})
+
+REGISTER_INITIALIZER(He_normal, 'he_normal')
+REGISTER_INITIALIZER(He_uniform, 'he_uniform')
+REGISTER_INITIALIZER(Ones_init, 'ones_init')
+REGISTER_INITIALIZER(Zeros_init, 'zeros_init')
+REGISTER_INITIALIZER(Normal_init, 'normal_init')
+REGISTER_INITIALIZER(Uniform_init, 'uniform_init')
+REGISTER_INITIALIZER(Xavier_normal, 'xavier_normal')
+REGISTER_INITIALIZER(Xavier_uniform, 'xavier_uniform')
+REGISTER_INITIALIZER(Orthogonal, 'orthogonal')

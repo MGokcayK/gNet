@@ -1,4 +1,4 @@
-"""
+    """
     Loss functions module of gNet.
 
     Containing Loss functions (with calling string): \n
@@ -20,14 +20,16 @@
 
     Author : @MGokcayK 
     Create : 25 / 03 / 2020
-    Update : 23 / 12 / 2020
-                Changed loss method`s arguments from `model_params` to `output_layer`.
+    Update : 26 / 12 / 2020
+                Adding REGISTER_LOSS_FUNCTION function.
 """
 
 import numpy as np
 import gNet.tensor as T
 import gNet.activation_functions as actFunc
 import gNet.metric as mt
+
+__lossFunctionsDecleration = {}
 
 class Loss:
     '''
@@ -194,14 +196,25 @@ class MeanSquareError(Loss):
         """
         return mt.CategoricalAccuracy()
 
-__lossFunctionsDecleration = {
-                            'categoricalcrossentropy'      : CategoricalCrossEntropy, 
-                            'cce'                          : CategoricalCrossEntropy,
-                            'binarycrossentropy'           : BinaryCrossEntropy,
-                            'bce'                          : BinaryCrossEntropy,
-                            'meansquareerror'              : MeanSquareError,
-                            'mse'                          : MeanSquareError
-                            }
+def REGISTER_LOSS_FUNCTION(loss_function : Loss, call_name : str):
+    """
+        Register Loss Function w.r.t `call_name`. 
+
+        Arguments :
+        -----------
+
+        loss_function   : Loss function class.
+        >>>    type     : gNet.loss_function.Loss()
+
+        call_name       : Calling name of loss function. It will be lowercase. It is not sensible.
+        >>>    type     : str
+    """
+    __lossFunctionsDecleration.update({call_name.lower() : loss_function})
 
 
-
+REGISTER_LOSS_FUNCTION(CategoricalCrossEntropy, 'categoricalcrossentropy')
+REGISTER_LOSS_FUNCTION(CategoricalCrossEntropy, 'cce')
+REGISTER_LOSS_FUNCTION(BinaryCrossEntropy, 'binarycrossentropy')
+REGISTER_LOSS_FUNCTION(BinaryCrossEntropy, 'bce')
+REGISTER_LOSS_FUNCTION(MeanSquareError, 'meansquareerror')
+REGISTER_LOSS_FUNCTION(MeanSquareError, 'mse')

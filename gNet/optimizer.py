@@ -22,11 +22,13 @@
 
     Author : @MGokcayK 
     Create : 28 / 03 / 2020
-    Update : 04 / 12 / 2020
-                Arrange SGD Momentum calculation order.
+    Update : 26 / 12 / 2020
+                Adding REGISTER_OPTIMIZER function.
 """
 
 import numpy as np
+
+__optimizerDecleration = {}
 
 class Optimizer:
     '''
@@ -341,11 +343,25 @@ class Adam(Optimizer):
         self.t += 1
 
 
-    
-__optimizerDecleration = {
-                        'sgd'     : SGD,
-                        'adagrad' : Adagrad,
-                        'rmsprop' : RMSprop,
-                        'adadelta': AdaDelta,
-                        'adam'    : Adam
-                        }
+def REGISTER_OPTIMIZER(optimizer : Optimizer, call_name : str):
+    """
+        Register Optimizer w.r.t `call_name`. 
+
+        Arguments :
+        -----------
+
+        optimizer       : Optimizer class.
+        >>>    type     : gNet.optimizer.Optimizer()
+
+        call_name       : Calling name of optimizer. It will be lowercase. It is not sensible.
+        >>>    type     : str
+        
+    """
+    __optimizerDecleration.update({call_name.lower() : optimizer})
+
+
+REGISTER_OPTIMIZER(SGD, 'sgd')
+REGISTER_OPTIMIZER(Adagrad, 'adagrad')
+REGISTER_OPTIMIZER(RMSprop, 'rmsprop')
+REGISTER_OPTIMIZER(AdaDelta, 'adadelta')
+REGISTER_OPTIMIZER(Adam, 'adam')
