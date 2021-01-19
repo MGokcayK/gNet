@@ -1,4 +1,4 @@
-    """
+"""
     Loss functions module of gNet.
 
     Containing Loss functions (with calling string): \n

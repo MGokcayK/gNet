@@ -94,7 +94,7 @@
 \makeatother
 
 
-\title {gNet (v0.2)}
+\title {gNet (v0.2.1)}
 \author{Mehmet Gökçay KABATAŞ - MGokcayK \\ github.com/MGokcayK \\ \texttt{mgokcaykdev@gmail.com}
 }
 
@@ -151,8 +151,28 @@ pip install gNet
 \end{lstlisting}
 
 
+\chapter{Differences from previous versions}
 
-\chapter{What are the difference in v0.2 from previous version v0.1.2?}
+\section{What are the difference in v0.2.1 from previous version v0.2?}
+
+\paragraph{}
+There is a several addition and changes from previous version which is v0.2. These difference can be listed as :
+
+\begin{itemize}
+	\item Added Functional Layer Connection (FLC) property. Now, gNet has non sequential model creation like PyTorch.
+	\item Layer has `get\_layers` method for finding all layers from input layers. This method can be call from all layers.
+	\item `zero\_grad` method in layer can be called by any layers in the model and also in the Model class' related method. It can zeroing all grads in related parameters in all layer of the model.
+	\item `save\_model` implementation moved from neuralnetwork module to base layer class. Yet, method is still in the neuralnetwork and just call it.
+	\item `load\_model` implementation moved from neuralnetwork module to base layer class. Yet, method is still in the neuralnetwork and just call it.
+	\item `get\_model\_summary` implementation moved from neuralnetwork module to base layer class. Yet, method is still in the neuralnetwork and just call it. It can show previous layer with its layer no or name.
+	\item Loss function's loss method's `model\_params` argument changed to `output\_layer`.
+	\item New printing options during training and save-load\_model functions.
+	\item Add new functionalities to `get\_loss\_plot`, `get\_accuracy\_plot` and evaluate methods.
+	\item Added REGISTER\_* functionality. gNet has REGISTER functionality for custom Initializer, Loss and Optimizer class.
+	
+\end{itemize}
+
+\section{What are the difference in v0.2 from previous version v0.1.2?}
 
 \paragraph{}
 There is a several addition and changes from previous version which is v0.1.2. These difference can be listed as :
@@ -659,6 +679,85 @@ net.get_accuracy_plot(show=True, save=True, figure_name='gNet_usage_acc.png')
 
 
 
+\section{How train model with Functional Layer Connection (FLC) approach?}
+\paragraph{}
+After prepare the data for training, model can be created like PyTorch.
+
+\begin{lstlisting}[language=Python, numbers=none, caption={Train and evaluate model with FLC.}, label={ex:train_FLC}]
+# declare Trainer
+class MnistTrainer():
+	def __init__(self) -> None:
+		self.batchSize = 32
+		self.epoch = 10
+		self.createModel()
+		self.loss = LF.CategoricalCrossEntropy()
+		self.acc = self.loss.get_metric()
+		self.layers = self.output.get_layers() # get all connectec layer from input layer.
+		self._optimizer = optimizer.Adam()
+		self.output.get_model_summary() # get model summary
+	
+	def createModel(self):
+		self.flatten = layer.Flatten(input_shape=x_train[0].shape)
+		self.flatten() # calculate layer properties as input layer.
+		self.h1 = layer.Dense(128,'relu')
+		self.h1(self.flatten) # connect the hidden layer to flatten layer as previous layer.
+		self.output = layer.Dense(10, 'softmax')
+		self.output(self.h1)
+		
+	# compute model layer by layer
+	def compute(self, inputs, train=True):
+		x = self.flatten.compute(inputs, train)
+		x = self.h1.compute(x, train)
+		return self.output.compute(x, train)
+		
+	def train(self):
+		for e in range(self.epoch):
+			self._ite = 0
+			self.acc.reset()
+			self._starts = np.arange(0, x_train.shape[0], self.batchSize)
+			self._epoch_loss = 0
+			for _start in self._starts:
+				self._ite += 1
+				_end = _start + self.batchSize
+				_x_batch = T.make_tensor(x_train[_start:_end])
+				_y_batch = T.make_tensor(y_train[_start:_end])
+				
+				self.output.zero_grad() # zeroing all layers' grad by calling `zero_grad`
+				
+				_pred = self.compute(_x_batch, True)
+				_loss = self.loss.loss(_y_batch, _pred, self.output)
+				_loss.backward()
+				self._epoch_loss += np.mean(_loss.value)           
+				self._accVal = self.acc.accuracy(_y_batch,_pred)    
+				
+				self._optimizer.step(self.layers)
+				
+				printing = 'Epoch : %d / %d ' % (e + 1, self.epoch)
+				printing += ' Loss : %.4f ' % (np.round(self._epoch_loss / self._ite, 4))
+				printing += ' Accuracy : %.4f ' % (np.round(self._accVal, 4))
+				print(printing, end='\r')
+			print("")
+			
+# create and train the Trainer
+net = MnistTrainer()
+net.train()
+			
+\end{lstlisting}
+
+\chapter{Functional Layer Connection}
+\label{ch:FLC}
+
+\paragraph{}
+Main purpose of the adding Functional Layer Connection (FLC) property to gNet is to has ability to create a distrubted models. Base approach is using `\_\_call\_\_` functionality of Python language to connect each layer. Important point of the model creation is each creating first layer of model. To handle the first layer creation, user just call first layer as collable object. 
+
+\paragraph{}
+In code \ref{ex:train_FLC}, there is method which called `createModel` handle the creation of model. The model has 3 layer which are Flatten, Dense (hidden) and Dense (output). To assign Flatten layer as input layer, layer just called as collable object by `self.flatten()` line. After that, to connect h1 layer which is hidden layer to flatten layer by calling `self.h1(self.flatten)`. With this structure, h1 layer learn that flatten layer is previous layer and flatten layer learn that h1 is next layer. Also, user can add another hidden layer which connected to flatten layer with `self.hNew(self.flatten)`. 
+
+\paragraph{}
+Layer has multiple next layers, but it has only one previous layer. 
+
+\paragraph{}
+To handle layer connection property, base Layer class has `\_connect\_layer` function which takes arguments as Layer based class. Function connect each layer to each other as `preLayer` and `\_nextLayers`.
 
 
 
@@ -838,7 +937,8 @@ Printing parameters can be listed as :
 	\item	 Accuracy              as 'accuracy',
 	\item	 Validation Loss       as 'val\_loss',
 	\item	 Validation Accuracy   as 'val\_acc',
-	\item	 ETA                   as 'ETA'. 
+	\item	 ETA                   as 'ETA',
+	\item    Nothing will print    as 'no-print'.
 \end{itemize}
 
 There is a note that printing loss is average loss of training. This works in this way. Epoch loss is summation of loss of batch during epoch. Loss is calculated by $ \frac{epoch\_loss}{passed\_number\_of\_batch}$. This calculates average loss of training which is similar in Keras and Tensorflow. Accuracy calculated by metric class which will be explained in Chapter \ref{ch:metric}.
@@ -884,22 +984,22 @@ else:
 Predict is calling `\_feedForward' for its input. This method created for end-user. After training, user can predict their unseen example by `predict` method. 
 
 \paragraph{evaluate}
-Evaluation of model. After training, user can call evaluate method to test the model with unseen test data. To handle it, evaluate method created.
+Evaluation of model. After training, user can call evaluate method to test the model with unseen test data. To handle it, evaluate method created. Evalute method can return evaluate loss and accuracy with v0.2.1.
 
 \paragraph{evaluate\_one\_batch}
 Does same job as evaluate. Difference is evaluating only one batch. One batch approach same as `train\_one\_batch` method. If model is single\_batch, it means that only evaluate one batch parameters. If model is not single\_batch model evaluate parameters upto that time. Example of difference between single\_batch=True and single\_batch=False is loss. When single\_batch=True, loss will be equal to that batch's loss. Yet, when single\_batch=False, loss will be equal to average loss upto that time. 
 
 \paragraph{save\_model}
-This method save trainable variables with numpy save method w.r.t `file\_name` input. Generally, this methods creates list to save layer trainable variables. For now, only Batch Normalization layer has exception. This layer has two another parameters which are running mean and running variance should save to. To handle it, there is a condition and it is expanding list to save these parameters to. To understand which layer is Batch Normalization layer, `layer\_name` parameters stores all layer names in model class. Therefore, gNet know that which class is Batch Normalization.
+This method save trainable variables with numpy save method w.r.t `file\_name` input. Generally, this methods creates list to save layer trainable variables. For now, only Batch Normalization layer has exception. This layer has two another parameters which are running mean and running variance should save to. To handle it, there is a condition and it is expanding list to save these parameters to. To understand which layer is Batch Normalization layer, `layer\_name` parameters stores all layer names in model class. Therefore, gNet know that which class is Batch Normalization. This method's implementation moved(in v0.2.1) to base Layer class to handle FLC(\ref{ch:FLC}) property. Yet, functionality still work as same as before.
 
 \paragraph{load\_model}
-This method is load trainable variables with numpy load method w.r.t `file\_name` input. It is opposite to `save\_model` method. It is also take care of Batch Normalization layer to handle additional stored parameters.
+This method is load trainable variables with numpy load method w.r.t `file\_name` input. It is opposite to `save\_model` method. It is also take care of Batch Normalization layer to handle additional stored parameters. This method's implementation moved(in v0.2.1) to base Layer class to handle FLC(\ref{ch:FLC}) property. Yet, functionality still work as same as before.
 
 \paragraph{get\_loss\_plot and get\_accuracy\_plot}
-These methods plotting loss and accuracy w.r.t iterations. Matplotlibs library used for them. Usage can be found in their descriptions.
+These methods plotting loss and accuracy w.r.t iterations. Matplotlibs library used for them. `figure\_title` which set title of plot, `x\_label` which set x label of plot and `y\_label` which set y label of plot can be set as input argument. Usage can be found in their descriptions.
 
 \paragraph{get\_model\_summary}
-This method write model summary. Texttable library used for it. If developer want to adjust it, be careful for row addition. First row should be list of one variable which is list of column names. Usage can be found in its description.
+This method write model summary. Texttable library used for it. If developer want to adjust it, be careful for row addition. First row should be list of one variable which is list of column names. Usage can be found in its description. This method's implementation moved(in v0.2.1) to base Layer class to handle FLC(\ref{ch:FLC}) property. Yet, functionality still work as same as before.
 
 
 
@@ -932,7 +1032,7 @@ These methods returns layers of model and params of model.
 \paragraph{zero\_grad}
 It makes zero calculated in each layer in `layers` parameter.
 
-\enlargethispage{\baselineskip}
+%\enlargethispage{\baselineskip}
 
 
 
@@ -1003,7 +1103,7 @@ class myInitializer(initializer.Initializer):
 In \ref{lis:initializer-custom-class}, custom initalizer class created which is uniform distribution from -1 to 1 with scale factor. 
 
 \paragraph{}
-To call `myInitializer` by layers, there is two way to do it. First way is put class into input arguments directly. Second way is adding into  `\_\_initializeDeclaretion`, then called by calling string. \ref{lis:initializer-calling-custom-class} show two way of calling custom initializer class.
+To call `myInitializer` by layers, there is two way to do it. First way is put class into input arguments directly. Second way is to register custom class by calling `REGISTER\_INITIALIZER` method from module then called by calling string. \ref{lis:initializer-calling-custom-class} show two way of calling custom initializer class.
 
 \begin{lstlisting}[language=Python, numbers=none, caption={Calling custom initializer class.}, label={lis:initializer-calling-custom-class}]
 
@@ -1017,7 +1117,7 @@ net.add(Dense(100, 'relu', initialize_method=myInitializer))
 # SECOND WAY
 
 ...
-initializer.__initializeDeclaretion['myinit'] =  myInitializer
+initializer.REGISTER_INITIALIZER(myInitializer, 'myinit') 
 ...
 net = NeuralNetwork(...)
 ...
@@ -1071,7 +1171,7 @@ gNet supports creating custom layer class. First of all, \textbf{class should in
 
 \paragraph{\_\_call\_\_}
 This method is called when layer added to model. It is hidden Python's method and called when class is created. It generally computes model parameters. Updated parameters of model can be changed by layer. Thus, be carefull
-for updated parameters. 
+for updated parameters. Also, to handle FLC(\ref{ch:FLC}), `self.\_connect\_layer(Layer)` function should be called. 
 
 \paragraph{\_init\_trainable}
 This method is called at the end of `\_\_call\_\_` method. It initialize proper parameters such as trainables. Even layer has no trainable parameter, class should has \_init\_trainable
@@ -1093,7 +1193,7 @@ Base Layer class has also other methods. If layer has only weights and bias as t
 Also, base Layer class has `zero\_grad` method which zeroing trainable parameters' grad values. For trainable parameters, base Layer class has getter and setter which used in optimization module a lot.
 
 \paragraph{\_\_init\_\_}
-Init method of base Layer class has two variables which are activation function caller `\_actFuncCaller` and trainable variables list `\_trainable`. Activation function caller used when activation functions need to call. Yet, trainable list is used a lot. Trainable parameters of layer should be append to `\_trainable` list because these parameters will be updated during optimization step. Therefore; base layer have getter and setter for trainable parameter to get and set it easily. To understand general structure, Dense layer implementation will be in \ref{lis:dense-layer-imp}.
+Init method of base Layer class has several variables such as activation function caller `\_actFuncCaller` and trainable variables list `\_trainable`. Activation function caller used when activation functions need to call. Yet, trainable list is used a lot. Trainable parameters of layer should be append to `\_trainable` list because these parameters will be updated during optimization step. Therefore; base layer have getter and setter for trainable parameter to get and set it easily. To understand general structure, Dense layer implementation will be in \ref{lis:dense-layer-imp}.
 
 \begin{lstlisting}[language=Python, numbers=none, caption={Dense Layer implementation.}, label={lis:dense-layer-imp}]
 
@@ -1119,42 +1219,67 @@ class Dense(Layer):
 		self._bias_regularizer = bias_regularizer
 
 	def __call__(self, params) -> None:
-		self._thisLayer = params['layer_number']
-		params['layer_name'].append('Dense : ' + self._activation)
-		params['activation'].append(self._activation)
-		params['model_neuron'].append(self._neuronNumber)
-		params['layer_output_shape'].append(self._neuronNumber)
-		self._init_trainable(params)
+		'''
+		Update of some of model parameters and class parameters.
+		'''
+		# connect layer to this layer
+		self._connect_layer(Layer)
+		
+		# if activation function is `str` create caller.
+		if isinstance(self._activation, str):
+		self._actCaller = self._actFuncCaller[self._activation]()
+		else:
+		self._actCaller = self._activation
+		
+		self._init_trainable()
 
 	def _init_trainable(self, params):
-		if self._thisLayer == 0:
-			row = 1
-			col = 1
+		'''
+		Initialization of dense layer's trainable variables.
+		'''
+		if self._layerNo == 0:
+		row = 1
+		col = 1
 		else:
-			row = params['model_neuron'][self._thisLayer-1]
-			col = params['model_neuron'][self._thisLayer]
-
+		#row = params['layer_output_shape'][self._thisLayer-1]
+		row = self._preLayer._layer_output_shape
+		if (type(row)==tuple):
+		#row = params['layer_output_shape'][self._thisLayer-1][0]
+		row = self._preLayer._layer_output_shape[0]
+		#col = params['layer_output_shape'][self._thisLayer]
+		col = self._layer_output_shape
+		if (type(col)==tuple):
+		#col = params['layer_output_shape'][self._thisLayer][0]
+		col = self._layer_output_shape[0]
+		
 		_w_shape = (row, col)
 		_b_shape = [col]
-
-		params['#parameters'].append(row*col+col)
-
+		
+		#params['#parameters'].append(row*col+col)
+		self._numOfParams = row * col + col
+		
 		# get initialized values of weight and biases
 		_w, _b = self._get_inits(_w_shape, _b_shape)
 		# append weight and biases into trainable as `tensor`.
-		self._trainable.append(T.Tensor(_w, have_grad=True))
-		self._trainable.append(T.Tensor(_b, have_grad=True))
+		self._trainable.append(T.Tensor(_w.astype(np.float32), have_grad=True))
+		self._trainable.append(T.Tensor(_b.astype(np.float32), have_grad=True))
 
 	def compute(self, inputs: T.Tensor, train: bool, **kwargs) -> T.Tensor:
+		'''
+		Computation of dense layer.
+		'''
 		_z_layer = inputs @ self._trainable[0] + self._trainable[1]
-		return self._actFuncCaller[self._activation].activate(_z_layer)
+		return self._actCaller.activate(_z_layer)
 
 	def regularize(self) -> T.Tensor:
+		"""
+		Regularization of layer. 
+		"""
 		_res = T.Tensor(0.)
-		if self._kernel_regularizer:
-			_res += self._kernel_regularizer.compute(self._trainable[0])
+		if self._weight_regularizer:
+		_res += self._weight_regularizer.compute(self._trainable[0])
 		if self._bias_regularizer:
-			_res += self._bias_regularizer.compute(self._trainable[1])
+		_res += self._bias_regularizer.compute(self._trainable[1])
 		return _res
 \end{lstlisting}
 
@@ -1544,7 +1669,7 @@ loss\_functions module has declaretor dictionary (called `caller` in other modul
 gNet supports creating custom loss functions class. First of all, \textbf{class should inherited from Loss class which is base class, and should have `loss` and `get\_metric` methods}. Without these, class can not be called by gNet. 
 
 \paragraph{}
-Calculation of loss function implemented in `loss` method. `loss` method should have `y\_true`, `y\_pred` and `model\_params` as input arguments. `y\_true` is true value of label (which is input as y in training). `y\_pred` is prediction of model and it is calculated from `\_feedForward` method. `model\_params` is model parameters which can be get by model's `get\_params` method. `loss` method should be return one value tensor. One value means that shape of tensor should be 1x1.  
+Calculation of loss function implemented in `loss` method. `loss` method should have `y\_true`, `y\_pred` and `output\_layer` as input arguments. `y\_true` is true value of label (which is input as y in training). `y\_pred` is prediction of model and it is calculated from `\_feedForward` method. `output\_layer` is output layer of model. `loss` method should be return one value tensor. One value means that shape of tensor should be 1x1.  
 
 \paragraph{}
 `get\_metric` method has no input argument. It should returned proper metric calculate from `metric` module. It is needed for accuracy calculation and explain in Chapter \ref{ch:metric}.
@@ -1558,7 +1683,7 @@ import gNet.metric as mt
 
 class myMSE(loss_functions.Loss):
 
-	def loss(self, y_true, y_pred, model_params):  
+	def loss(self, y_true, y_pred, output_layer):  
 		y_true = T.make_tensor(y_true)
 		y_pred = T.make_tensor(y_pred)
 		error = (y_pred - y_true) ** 2
@@ -1572,7 +1697,7 @@ class myMSE(loss_functions.Loss):
 In \ref{lis:loss-custom-class}, custom loss function class created which is mean square error. 
 
 \paragraph{}
-To call `myMSE` by gNet, there is two way to do it. First way is put class into input arguments directly. Second way is adding into  `\_\_lossFunctionsDecleration`, then called by calling string. \ref{lis:loss-calling-custom-class} show two way of calling custom initializer class.
+To call `myMSE` by gNet, there is two way to do it. First way is put class into input arguments directly. Second way is to register custom class by calling `REGISTER\_LOSS\_FUNCTION` method from module then called by calling string. Code \ref{lis:loss-calling-custom-class} show two way of calling custom initializer class.
 
 \begin{lstlisting}[language=Python, numbers=none, caption={Calling custom loss function class.}, label={lis:loss-calling-custom-class}]
 
@@ -1586,7 +1711,7 @@ net.setup(loss_function=myMSE, optimizer='adam')
 # SECOND WAY
 
 ...
-loss_functions.__lossFunctionsDecleration['mymse'] =  myMSE
+loss_functions.REGISTER_LOSS_FUNCTION(myMSE, 'mymse')
 ...
 net = NeuralNetwork(...)
 ...
@@ -1853,7 +1978,7 @@ class myAdam(optimizer.Optimizer)
 In \ref{lis:optimizer-custom-class}, custom Adam optimizer class. There is `self.init` condition to initialize some optimization parameters. Reason behind the structure is dynamic structure of gNet. Layer can be changed dynamically, thus; in `\_\_init\_\_` method, initialize these optimization parameters will not be fit with the layers. To handle it there is a boolean value called `self.init`. It setted True in `\_\_init\_\_` method, then when called first step function, it will assign as False. With this approach, each layers' trainable parameters has own optimization parameters. 
 
 \paragraph{}
-To call `myAdam` by gNet, there is two way to do it. First way is put class into input arguments directly. Second way is adding into  `\_\_optimizerDecleration`, then called by calling string. \ref{lis:optimizer-calling-custom-class} show two way of calling custom optimizer class.
+To call `myAdam` by gNet, there is two way to do it. First way is put class into input arguments directly. Second way is to register custom class by calling `REGISTER\_OPTIMIZER` method from module then called by calling string. \ref{lis:optimizer-calling-custom-class} show two way of calling custom optimizer class.
 
 \begin{lstlisting}[language=Python, numbers=none, caption={Calling custom optimizer class.}, label={lis:optimizer-calling-custom-class}]
 
@@ -1866,7 +1991,7 @@ net.setup(loss_function='cce', optimizer=myAdam)
 # SECOND WAY
 
 ...
-optimizer.__optimizerDecleration['myadam'] =  myAdam
+optimizer.REGISTER_OPTIMIZER(myAdam, 'myadam') =  myAdam
 ...
 net = NeuralNetwork(...)
 ...

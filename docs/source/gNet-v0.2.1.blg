@@ -1,6 +1,6 @@
 This is BibTeX, Version 0.99d (MiKTeX 2.9.7420 64-bit)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
-The top-level auxiliary file: gNet-v0.2.aux
+The top-level auxiliary file: gNet-v0.2.1.aux
 The style file: abbrvnat.bst
 Database file #1: mgk.bib
 Warning--entry type for "MGK" isn't style-file defined
@@ -15,7 +15,7 @@ Warning--entry type for "cs231" isn't style-file defined
 --line 55 of file mgk.bib
 You've used 6 entries,
             2773 wiz_defined-function locations,
-            626 strings with 5114 characters,
+            626 strings with 5118 characters,
 and the built_in function-call counts, 1996 in all, are:
 = -- 168
 > -- 89

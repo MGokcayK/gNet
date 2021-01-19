@@ -1,0 +1,238 @@
+\contentsline {chapter}{\numberline {1}What is gNet?}{4}{chapter.1}%
+\contentsline {paragraph}{}{4}{chapter.1}%
+\contentsline {paragraph}{}{4}{chapter.1}%
+\contentsline {paragraph}{}{4}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Installation}{4}{section.1.1}%
+\contentsline {chapter}{\numberline {2}Differences from previous versions}{5}{chapter.2}%
+\contentsline {section}{\numberline {2.1}What are the difference in v0.2.1 from previous version v0.2?}{5}{section.2.1}%
+\contentsline {paragraph}{}{5}{section.2.1}%
+\contentsline {section}{\numberline {2.2}What are the difference in v0.2 from previous version v0.1.2?}{6}{section.2.2}%
+\contentsline {paragraph}{}{6}{section.2.2}%
+\contentsline {section}{\numberline {2.3}What are difference in v0.1.2 from previous version v0.1}{7}{section.2.3}%
+\contentsline {paragraph}{}{7}{section.2.3}%
+\contentsline {chapter}{\numberline {3}Usage with Examples}{8}{chapter.3}%
+\contentsline {paragraph}{}{8}{chapter.3}%
+\contentsline {section}{\numberline {3.1}How calculate gradient?}{8}{section.3.1}%
+\contentsline {paragraph}{}{8}{section.3.1}%
+\contentsline {paragraph}{}{8}{section.3.1}%
+\contentsline {section}{\numberline {3.2}How load MNIST Dataset?}{9}{section.3.2}%
+\contentsline {paragraph}{}{9}{section.3.2}%
+\contentsline {section}{\numberline {3.3}How make one-hot vector of label of MNIST Dataset?}{9}{section.3.3}%
+\contentsline {paragraph}{}{9}{section.3.3}%
+\contentsline {section}{\numberline {3.4}How create MLP model?}{10}{section.3.4}%
+\contentsline {paragraph}{}{10}{section.3.4}%
+\contentsline {section}{\numberline {3.5}How create CNN model?}{10}{section.3.5}%
+\contentsline {paragraph}{}{10}{section.3.5}%
+\contentsline {paragraph}{}{10}{section.3.5}%
+\contentsline {section}{\numberline {3.6}How create model with Dropout layer?}{11}{section.3.6}%
+\contentsline {paragraph}{}{11}{section.3.6}%
+\contentsline {section}{\numberline {3.7}How create model with Batch Normalization layer?}{12}{section.3.7}%
+\contentsline {paragraph}{}{12}{section.3.7}%
+\contentsline {section}{\numberline {3.8}How create supervised learning structure and setup?}{12}{section.3.8}%
+\contentsline {paragraph}{}{12}{section.3.8}%
+\contentsline {section}{\numberline {3.9}How create supervised learning structure and setup with custom parameters?}{13}{section.3.9}%
+\contentsline {paragraph}{}{13}{section.3.9}%
+\contentsline {section}{\numberline {3.10}How train and evaluate model?}{13}{section.3.10}%
+\contentsline {paragraph}{}{13}{section.3.10}%
+\contentsline {section}{\numberline {3.11}How train and evaluate model with validation?}{14}{section.3.11}%
+\contentsline {paragraph}{}{14}{section.3.11}%
+\contentsline {section}{\numberline {3.12}How train and evaluate model one batch?}{14}{section.3.12}%
+\contentsline {paragraph}{}{14}{section.3.12}%
+\contentsline {section}{\numberline {3.13}How train and evaluate model with validation one batch?}{16}{section.3.13}%
+\contentsline {paragraph}{}{16}{section.3.13}%
+\contentsline {section}{\numberline {3.14}How predict of model?}{18}{section.3.14}%
+\contentsline {paragraph}{}{18}{section.3.14}%
+\contentsline {section}{\numberline {3.15}How save model?}{18}{section.3.15}%
+\contentsline {paragraph}{}{18}{section.3.15}%
+\contentsline {section}{\numberline {3.16}How load model?}{18}{section.3.16}%
+\contentsline {paragraph}{}{18}{section.3.16}%
+\contentsline {section}{\numberline {3.17}How get loss and accuracy plots of traning?}{19}{section.3.17}%
+\contentsline {paragraph}{}{19}{section.3.17}%
+\contentsline {section}{\numberline {3.18}How train model with Functional Layer Connection (FLC) approach?}{19}{section.3.18}%
+\contentsline {paragraph}{}{19}{section.3.18}%
+\contentsline {chapter}{\numberline {4}Functional Layer Connection}{21}{chapter.4}%
+\contentsline {paragraph}{}{21}{chapter.4}%
+\contentsline {paragraph}{}{21}{chapter.4}%
+\contentsline {paragraph}{}{21}{chapter.4}%
+\contentsline {paragraph}{}{21}{chapter.4}%
+\contentsline {chapter}{\numberline {5}tensor, tensor\_ops modules and Tensor class}{22}{chapter.5}%
+\contentsline {paragraph}{}{22}{chapter.5}%
+\contentsline {paragraph}{}{22}{chapter.5}%
+\contentsline {paragraph}{}{22}{chapter.5}%
+\contentsline {section}{\numberline {5.1}tensor module}{22}{section.5.1}%
+\contentsline {paragraph}{}{22}{section.5.1}%
+\contentsline {section}{\numberline {5.2}tensor\_ops module}{23}{section.5.2}%
+\contentsline {paragraph}{}{23}{section.5.2}%
+\contentsline {paragraph}{}{23}{section.5.2}%
+\contentsline {paragraph}{}{24}{lstnumber.5.1.19}%
+\contentsline {paragraph}{}{24}{lstnumber.5.1.19}%
+\contentsline {paragraph}{}{24}{lstnumber.5.1.19}%
+\contentsline {paragraph}{}{25}{lstnumber.5.2.46}%
+\contentsline {paragraph}{}{25}{lstnumber.5.2.46}%
+\contentsline {paragraph}{}{25}{lstnumber.5.2.46}%
+\contentsline {section}{\numberline {5.3}How calculate gradient?}{26}{section.5.3}%
+\contentsline {paragraph}{}{26}{section.5.3}%
+\contentsline {paragraph}{}{26}{section.5.3}%
+\contentsline {chapter}{\numberline {6}neuralnetwork module}{27}{chapter.6}%
+\contentsline {paragraph}{}{27}{chapter.6}%
+\contentsline {paragraph}{}{27}{chapter.6}%
+\contentsline {paragraph}{\_\_init\_\_}{27}{chapter.6}%
+\contentsline {paragraph}{\_feedForward}{27}{chapter.6}%
+\contentsline {paragraph}{\_regularizer}{27}{chapter.6}%
+\contentsline {paragraph}{\_train\_print}{28}{chapter.6}%
+\contentsline {paragraph}{}{28}{chapter.6}%
+\contentsline {paragraph}{train}{28}{chapter.6}%
+\contentsline {paragraph}{}{28}{chapter.6}%
+\contentsline {paragraph}{train\_one\_batch}{29}{chapter.6}%
+\contentsline {paragraph}{}{29}{chapter.6}%
+\contentsline {paragraph}{}{29}{chapter.6}%
+\contentsline {paragraph}{}{29}{chapter.6}%
+\contentsline {paragraph}{}{29}{chapter.6}%
+\contentsline {paragraph}{new\_epoch}{29}{chapter.6}%
+\contentsline {paragraph}{setup}{30}{chapter.6}%
+\contentsline {paragraph}{predict}{30}{lstnumber.6.1.5}%
+\contentsline {paragraph}{evaluate}{30}{lstnumber.6.1.5}%
+\contentsline {paragraph}{evaluate\_one\_batch}{30}{lstnumber.6.1.5}%
+\contentsline {paragraph}{save\_model}{30}{lstnumber.6.1.5}%
+\contentsline {paragraph}{load\_model}{31}{lstnumber.6.1.5}%
+\contentsline {paragraph}{get\_loss\_plot and get\_accuracy\_plot}{31}{lstnumber.6.1.5}%
+\contentsline {paragraph}{get\_model\_summary}{31}{lstnumber.6.1.5}%
+\contentsline {chapter}{\numberline {7}model module}{32}{chapter.7}%
+\contentsline {paragraph}{}{32}{chapter.7}%
+\contentsline {paragraph}{\_\_init\_\_}{32}{chapter.7}%
+\contentsline {paragraph}{add}{32}{chapter.7}%
+\contentsline {paragraph}{get\_layers and get\_params}{32}{chapter.7}%
+\contentsline {paragraph}{zero\_grad}{33}{chapter.7}%
+\contentsline {chapter}{\numberline {8}initializer module}{34}{chapter.8}%
+\contentsline {paragraph}{}{34}{chapter.8}%
+\contentsline {paragraph}{}{34}{chapter.8}%
+\contentsline {paragraph}{}{35}{lstnumber.8.1.7}%
+\contentsline {section}{\numberline {8.1}Creating Custom Initializer Class}{35}{section.8.1}%
+\contentsline {paragraph}{}{35}{section.8.1}%
+\contentsline {paragraph}{}{35}{section.8.1}%
+\contentsline {paragraph}{}{35}{section.8.1}%
+\contentsline {paragraph}{}{36}{lstnumber.8.2.9}%
+\contentsline {chapter}{\numberline {9}layer module}{37}{chapter.9}%
+\contentsline {paragraph}{}{37}{chapter.9}%
+\contentsline {section}{\numberline {9.1}Creating Custom Layer Class}{38}{section.9.1}%
+\contentsline {paragraph}{}{38}{section.9.1}%
+\contentsline {paragraph}{\_\_call\_\_}{38}{section.9.1}%
+\contentsline {paragraph}{\_init\_trainable}{38}{section.9.1}%
+\contentsline {paragraph}{compute}{38}{section.9.1}%
+\contentsline {paragraph}{regularize}{39}{section.9.1}%
+\contentsline {paragraph}{}{39}{section.9.1}%
+\contentsline {paragraph}{}{39}{section.9.1}%
+\contentsline {paragraph}{\_\_init\_\_}{39}{section.9.1}%
+\contentsline {section}{\numberline {9.2}Dense Layer}{41}{section.9.2}%
+\contentsline {paragraph}{}{41}{section.9.2}%
+\contentsline {paragraph}{}{41}{section.9.2}%
+\contentsline {paragraph}{}{42}{section.9.2}%
+\contentsline {section}{\numberline {9.3}Flatten Layer}{42}{section.9.3}%
+\contentsline {paragraph}{}{42}{section.9.3}%
+\contentsline {paragraph}{}{42}{section.9.3}%
+\contentsline {paragraph}{}{42}{section.9.3}%
+\contentsline {section}{\numberline {9.4}Activation Layer}{43}{section.9.4}%
+\contentsline {paragraph}{}{43}{section.9.4}%
+\contentsline {paragraph}{}{43}{section.9.4}%
+\contentsline {section}{\numberline {9.5}Dropout Layer}{43}{section.9.5}%
+\contentsline {paragraph}{}{43}{section.9.5}%
+\contentsline {paragraph}{}{43}{section.9.5}%
+\contentsline {paragraph}{}{43}{section.9.5}%
+\contentsline {section}{\numberline {9.6}Batch Normalization Layer}{44}{section.9.6}%
+\contentsline {paragraph}{}{44}{section.9.6}%
+\contentsline {paragraph}{}{44}{section.9.6}%
+\contentsline {paragraph}{}{44}{section.9.6}%
+\contentsline {paragraph}{}{44}{section.9.6}%
+\contentsline {section}{\numberline {9.7}Conv1D Layer}{44}{section.9.7}%
+\contentsline {paragraph}{}{44}{section.9.7}%
+\contentsline {paragraph}{}{45}{section.9.7}%
+\contentsline {section}{\numberline {9.8}Conv2D Layer}{45}{section.9.8}%
+\contentsline {paragraph}{}{45}{section.9.8}%
+\contentsline {paragraph}{}{45}{section.9.8}%
+\contentsline {section}{\numberline {9.9}Conv3D Layer}{45}{section.9.9}%
+\contentsline {paragraph}{}{45}{section.9.9}%
+\contentsline {paragraph}{}{46}{section.9.9}%
+\contentsline {section}{\numberline {9.10}MaxPool1D Layer}{46}{section.9.10}%
+\contentsline {paragraph}{}{46}{section.9.10}%
+\contentsline {paragraph}{}{46}{section.9.10}%
+\contentsline {section}{\numberline {9.11}MaxPool2D Layer}{46}{section.9.11}%
+\contentsline {paragraph}{}{46}{section.9.11}%
+\contentsline {paragraph}{}{47}{section.9.11}%
+\contentsline {section}{\numberline {9.12}MaxPool3D Layer}{47}{section.9.12}%
+\contentsline {paragraph}{}{47}{section.9.12}%
+\contentsline {paragraph}{}{47}{section.9.12}%
+\contentsline {section}{\numberline {9.13}AveragePool1D Layer}{47}{section.9.13}%
+\contentsline {paragraph}{}{47}{section.9.13}%
+\contentsline {paragraph}{}{48}{section.9.13}%
+\contentsline {section}{\numberline {9.14}AveragePool2D Layer}{48}{section.9.14}%
+\contentsline {paragraph}{}{48}{section.9.14}%
+\contentsline {paragraph}{}{48}{section.9.14}%
+\contentsline {section}{\numberline {9.15}AveragePool3D Layer}{48}{section.9.15}%
+\contentsline {paragraph}{}{48}{section.9.15}%
+\contentsline {paragraph}{}{49}{section.9.15}%
+\contentsline {section}{\numberline {9.16}SimpleRNN Layer}{49}{section.9.16}%
+\contentsline {paragraph}{}{49}{section.9.16}%
+\contentsline {paragraph}{}{49}{section.9.16}%
+\contentsline {section}{\numberline {9.17}LSTM Layer}{49}{section.9.17}%
+\contentsline {paragraph}{}{49}{section.9.17}%
+\contentsline {paragraph}{}{49}{section.9.17}%
+\contentsline {section}{\numberline {9.18}GRU Layer}{50}{section.9.18}%
+\contentsline {paragraph}{}{50}{section.9.18}%
+\contentsline {paragraph}{}{50}{section.9.18}%
+\contentsline {section}{\numberline {9.19}TimeDistributed Layer}{50}{section.9.19}%
+\contentsline {paragraph}{}{50}{section.9.19}%
+\contentsline {paragraph}{}{50}{section.9.19}%
+\contentsline {section}{\numberline {9.20}RepeatVector Layer}{51}{section.9.20}%
+\contentsline {paragraph}{}{51}{section.9.20}%
+\contentsline {paragraph}{}{51}{section.9.20}%
+\contentsline {chapter}{\numberline {10}loss\_functions module}{52}{chapter.10}%
+\contentsline {paragraph}{}{52}{chapter.10}%
+\contentsline {paragraph}{}{52}{chapter.10}%
+\contentsline {paragraph}{}{53}{lstnumber.10.1.7}%
+\contentsline {section}{\numberline {10.1}Creating Custom Loss Class}{53}{section.10.1}%
+\contentsline {paragraph}{}{53}{section.10.1}%
+\contentsline {paragraph}{}{53}{section.10.1}%
+\contentsline {paragraph}{}{53}{section.10.1}%
+\contentsline {paragraph}{}{53}{section.10.1}%
+\contentsline {paragraph}{}{54}{lstnumber.10.2.13}%
+\contentsline {chapter}{\numberline {11}activation\_functions module}{55}{chapter.11}%
+\contentsline {paragraph}{}{55}{chapter.11}%
+\contentsline {paragraph}{}{55}{lstnumber.11.1.5}%
+\contentsline {section}{\numberline {11.1}Creating Custom ActivationFunction Class}{56}{section.11.1}%
+\contentsline {paragraph}{}{56}{section.11.1}%
+\contentsline {paragraph}{}{56}{section.11.1}%
+\contentsline {paragraph}{}{56}{section.11.1}%
+\contentsline {paragraph}{}{56}{section.11.1}%
+\contentsline {paragraph}{}{56}{lstnumber.11.2.13}%
+\contentsline {chapter}{\numberline {12}metric module}{58}{chapter.12}%
+\contentsline {paragraph}{}{58}{chapter.12}%
+\contentsline {section}{\numberline {12.1}Creating Custom Metric Class}{58}{section.12.1}%
+\contentsline {paragraph}{}{58}{section.12.1}%
+\contentsline {paragraph}{}{58}{section.12.1}%
+\contentsline {paragraph}{}{58}{section.12.1}%
+\contentsline {paragraph}{}{59}{section.12.1}%
+\contentsline {paragraph}{}{59}{lstnumber.12.1.18}%
+\contentsline {chapter}{\numberline {13}optimizer module}{60}{chapter.13}%
+\contentsline {paragraph}{}{60}{chapter.13}%
+\contentsline {paragraph}{}{60}{chapter.13}%
+\contentsline {paragraph}{}{61}{lstnumber.13.1.7}%
+\contentsline {section}{\numberline {13.1}Creating Custom Optimizer Class}{61}{section.13.1}%
+\contentsline {paragraph}{}{61}{section.13.1}%
+\contentsline {paragraph}{}{61}{section.13.1}%
+\contentsline {paragraph}{}{61}{section.13.1}%
+\contentsline {paragraph}{}{61}{section.13.1}%
+\contentsline {paragraph}{}{62}{lstnumber.13.2.43}%
+\contentsline {chapter}{\numberline {14}regularizer module}{64}{chapter.14}%
+\contentsline {paragraph}{}{64}{chapter.14}%
+\contentsline {paragraph}{}{64}{chapter.14}%
+\contentsline {paragraph}{}{65}{lstnumber.14.1.14}%
+\contentsline {section}{\numberline {14.1}Creating Custom Regularizer Class}{65}{section.14.1}%
+\contentsline {paragraph}{}{65}{section.14.1}%
+\contentsline {paragraph}{}{65}{section.14.1}%
+\contentsline {paragraph}{}{65}{section.14.1}%
+\contentsline {paragraph}{}{65}{lstnumber.14.2.8}%
+\contentsline {paragraph}{}{65}{lstnumber.14.2.8}%
+\contentsline {chapter}{\numberline {15}conv\_utils module and utils module}{66}{chapter.15}%
+\contentsline {paragraph}{}{66}{chapter.15}%
+\contentsline {paragraph}{}{66}{chapter.15}%
+\contentsline {paragraph}{}{66}{chapter.15}%
