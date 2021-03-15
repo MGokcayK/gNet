@@ -48,8 +48,8 @@
 
     Author : @MGokcayK github.com/MGokcayK
     Create : 24 / 03 / 2020
-    Update : 19 / 09 / 2020
-                Adding maximum ops.
+    Update : 15 / 03 / 2021
+                Adding detach method.
 """
 
 
@@ -110,7 +110,6 @@ class Tensor:
 
         if self.have_grad:
             self.zero_grad()
-            #self.one_grad()
 
     # handle of numpy's reversed ops like radd, rmat etc. of broadcasting.
     __array_ufunc__ = None
@@ -297,8 +296,16 @@ class Tensor:
                 back_grad = dependency.grad_fn(grad._value)
                 ops_name = dependency.ops_name
                 #print(grad._value, back_grad, ops_name)
+                #print(id(self), ops_name)
                 dependency.tensor.backward(Tensor(back_grad), ops_name)
             
+    def detach(self) -> 'Tensor':
+        """
+            Create new Tensor which has same attributes except `have_grad`.
+            Detach assign the `have_grad = False` and return new Tensor.
+        """
+        d_tensor = Tensor(self.value, False, self.depends_on)
+        return d_tensor
 
     def sum(self, axis=None, keepdim=False) -> 'Tensor':
         '''
@@ -1555,6 +1562,5 @@ def maximum(t1: Tensor, t2: Tensor) -> Tensor:
         Partial derivative is depend on calling method of `backward` like y.backward(). 
     """
     return t_ops.maximum(make_tensor(t1), make_tensor(t2))
-
 
 
