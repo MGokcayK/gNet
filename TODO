@@ -1,0 +1,75 @@
+# TODO list of project from 31/03/2020
+
+MLP:
+    ✔ Feed forward dynamic implementation
+    ✔ Softmax implementation
+    ✔ Optimizer implementation
+    ✔ Check Nesterov Imp of SGD  https://jlmelville.github.io/mize/nesterov.html#bengio_formulation
+    ✔ Loss function implementation 
+    ✔ Activation function arrange
+    ✔ Layer class / Partially done. 
+    ✔ Accuracy Calculation during training and evaluation part can be as Metrics and arrange loss_function's get_metrics
+    ✔ Proper loss print
+    ✔ Calculation time 
+    ✔ Initializer selection for user with string
+    ✔ TENSOR CLASS DESCRIPTIONS
+    ✔ Layer Class DESCRIPTIONS
+    ✔ Metric class DESCRIPTIONS
+    ✔ Neural network class DESCRIPTIONS
+    ✔ Save Model
+    ✔ Load Model
+    ✔ Model summary
+    ✔ ETA : Estimated Time of Arrival
+    ✔ Plotting (LOSS & ACC)
+    ✔ uniform DESCRIPTIONS
+    ✔ bias Initializer
+    ✔ loss module arrange w.r.t model_params
+
+CONVNN:
+    ✔ Conv2D layer  
+    ✔ con2d glorot Initializer, DESCRIPTIONS
+    ✔ Maxpool layer
+    ✔ AvaragePool Layer
+    ✔ Flatten Layer ||| Flatten layer in middle of the model should be declared.
+    ✔ Dropout Layer
+    ✔ RELU / SOFTMAX stability analysis
+    ✔ Batch normalization layer
+    ✔ Regulizer
+    ✔ Padding corrections and call it w/ strings
+    ✔ Batch normalization Fixing for 3D layers and different kernel size
+
+RNN:
+    ✔ SimpleRNN
+    ✔ LSTM
+    ✔ GRU
+    ✔ Try custom activation class into layer directly, without calling by string
+
+FLC | Functional Layer Connection:
+    ✔ Functional layer connection creted. Layer __call__ method has changed respectively.
+    ✔ Model module updated for functional layer connection changes.
+    ✔ Layer has `get_layers()` method for finding all layers from root layer. It can be called from any layer in the model.
+    ✔ zero_grad can be called by any layers in the model and also in the Model class' related method. It can zeroing all grads in related parameters in all layer of the model.
+    ✔ `save_model` implementation moved from neuralnetwork module to base layer class. yet, method is still in the neuralnetwork and just call it
+    ✔ `load_model` implementation moved from neuralnetwork module to base layer class. yet, method is still in the neuralnetwork and just call it
+    ✔ `get_model_summary` implementation moved from neuralnetwork module to base layer class. yet, method is still in the neuralnetwork and just call it.
+    ✔ It can show previous layer with its layer no or name.
+    ✔ Loss function`s loss method`s model_params changed to output_layer
+    ☐ Adding Register Activation function property
+    
+        
+Tensor_ops:
+    ☐ concantanate Tensor_ops addition
+    ☐ Tensor_ops DOT should be re-implemented.
+    
+
+LIBRARY:
+    ☐ Trying to increase calculation speed, get rid of for loops #HARDEST SO NOT NOW
+
+
+NOTES:
+    + train argument in feed forward is written for dropout. during testing dropout is not used. same for batch norm.
+    + when running train_one_batch with val_rate, it will print different result w.r.t running train with val_rate.
+    The reason is when use val_rate for train_one_batch, it will split validation data from batch. On the other hand, 
+    when use val_rate for train, it will split validation data from whole data. This makes the difference for validation
+    results. Yet, if user input val_x and val_y into train and train_one_batch, it will give same results because data 
+    is same. 
