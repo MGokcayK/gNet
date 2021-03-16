@@ -20,8 +20,9 @@
 
     Author : @MGokcayK 
     Create : 25 / 03 / 2020
-    Update : 26 / 12 / 2020
-                Adding REGISTER_LOSS_FUNCTION function.
+    Update : 16 / 03 / 2021
+                Adding custom Loss Function Declaration list and make sure that
+                registered custom Loss Function class has inherit from `Loss`.
 """
 
 import numpy as np
@@ -29,7 +30,23 @@ import gNet.tensor as T
 import gNet.activation_functions as actFunc
 import gNet.metric as mt
 
-__lossFunctionsDecleration = {}
+class _LFDeclarationDict(dict):
+    """
+        Custom Dictionary class for Loss Functions. It stores registered 
+        Loss functions.
+    """
+    def __getitem__(self, key):
+        try:
+            return self.__dict__[key]
+        except KeyError as e:
+            msg = f"The Loss Function `{key}` is not registered! " 
+            msg += "Please use `REGISTER_LOSS_FUNCTION` method for registering."
+            raise KeyError(msg) from None
+  
+    def update(self, *args, **kwargs):
+        return self.__dict__.update(*args, **kwargs)
+
+__lossFunctionsDecleration = _LFDeclarationDict()
 
 class Loss:
     '''
@@ -196,6 +213,7 @@ class MeanSquareError(Loss):
         """
         return mt.CategoricalAccuracy()
 
+
 def REGISTER_LOSS_FUNCTION(loss_function : Loss, call_name : str):
     """
         Register Loss Function w.r.t `call_name`. 
@@ -209,7 +227,13 @@ def REGISTER_LOSS_FUNCTION(loss_function : Loss, call_name : str):
         call_name       : Calling name of loss function. It will be lowercase. It is not sensible.
         >>>    type     : str
     """
-    __lossFunctionsDecleration.update({call_name.lower() : loss_function})
+    if isinstance(loss_function(), Loss):
+        __lossFunctionsDecleration.update({call_name.lower() : loss_function})
+    else:
+        msg = f"The Loss Function Class `{loss_function}` is not same as gNet's Loss Function base class. " 
+        msg += f"\nPlease make sure that `{loss_function}` inherit from gNet.loss_functions.Loss"
+        raise TypeError(msg)
+
 
 
 REGISTER_LOSS_FUNCTION(CategoricalCrossEntropy, 'categoricalcrossentropy')

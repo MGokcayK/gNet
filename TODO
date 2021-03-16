@@ -49,12 +49,12 @@ FLC | Functional Layer Connection:
     ✔ Model module updated for functional layer connection changes.
     ✔ Layer has `get_layers()` method for finding all layers from root layer. It can be called from any layer in the model.
     ✔ zero_grad can be called by any layers in the model and also in the Model class' related method. It can zeroing all grads in related parameters in all layer of the model.
-    ✔ `save_model` implementation moved from neuralnetwork module to base layer class. yet, method is still in the neuralnetwork and just call it
-    ✔ `load_model` implementation moved from neuralnetwork module to base layer class. yet, method is still in the neuralnetwork and just call it
+    ✔ `save_model` implementation moved from neuralnetwork module to base layer class. yet, method is still in the neuralnetwork and just call it.
+    ✔ `load_model` implementation moved from neuralnetwork module to base layer class. yet, method is still in the neuralnetwork and just call it.
     ✔ `get_model_summary` implementation moved from neuralnetwork module to base layer class. yet, method is still in the neuralnetwork and just call it.
     ✔ It can show previous layer with its layer no or name.
-    ✔ Loss function`s loss method`s model_params changed to output_layer
-    ☐ Adding Register Activation function property
+    ✔ Loss function`s loss method`s model_params changed to output_layer.
+    ✔ Adding Register Activation function property.
     
         
 Tensor_ops:

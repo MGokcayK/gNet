@@ -24,13 +24,29 @@
 
     Author : @MGokcayK 
     Create : 30 / 03 / 2020
-    Update : 26 / 12 / 2020
-                Adding REGISTER_INITIALIZER function.
+    Update : 16 / 03 / 2021
+                Adding custom Initializer Declaration list and make sure that
+                registered custom Initializer class has inherit from `Initializer`.
 """
 
 import numpy as np
 
-__initializeDeclaretion = {}
+class _InitializerDeclarationDict(dict):
+    """
+        Custom Dictionary class for Initializers. It stores registered initializers.
+    """
+    def __getitem__(self, key):
+        try:
+            return self.__dict__[key]
+        except KeyError as e:
+            msg = f"The Initializer `{key}` is not registered! " 
+            msg += "Please use `REGISTER_INITIALIZER` method for registering."
+            raise KeyError(msg) from None
+  
+    def update(self, *args, **kwargs):
+        return self.__dict__.update(*args, **kwargs)
+
+__initializeDeclaretion = _InitializerDeclarationDict()
 
 class Initializer:
     """
@@ -302,7 +318,13 @@ def REGISTER_INITIALIZER(initializer : Initializer, call_name : str):
         call_name       : Calling name of initializer. It will be lowercase. It is not sensible.
         >>>    type     : str
     """
-    __initializeDeclaretion.update({call_name.lower() : initializer})
+    if isinstance(initializer(), Initializer):
+        __initializeDeclaretion.update({call_name.lower() : initializer})
+    else:
+        msg = f"The Initializer `{initializer}` is not same as gNet's Initializer base class. " 
+        msg += f"\nPlease make sure that `{initializer}` inherit from gNet.initializer.Initializer"
+        raise TypeError(msg)
+    
 
 REGISTER_INITIALIZER(He_normal, 'he_normal')
 REGISTER_INITIALIZER(He_uniform, 'he_uniform')

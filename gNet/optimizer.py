@@ -22,13 +22,29 @@
 
     Author : @MGokcayK 
     Create : 28 / 03 / 2020
-    Update : 26 / 12 / 2020
-                Adding REGISTER_OPTIMIZER function.
+    Update : 16 / 03 / 2021
+                Adding custom Optimizer Declaration list and make sure that
+                registered custom optimizer class has inherit from `Optimizer`.
 """
 
 import numpy as np
 
-__optimizerDecleration = {}
+class _OptimizerDeclarationDict(dict):
+    """
+        Custom Dictionary class for Optimizers. It stores registered optimizers.
+    """
+    def __getitem__(self, key):
+        try:
+            return self.__dict__[key]
+        except KeyError as e:
+            msg = f"The Optimizer `{key}` is not registered! " 
+            msg += "Please use `REGISTER_OPTIMIZER` method for registering."
+            raise KeyError(msg) from None
+  
+    def update(self, *args, **kwargs):
+        return self.__dict__.update(*args, **kwargs)
+
+__optimizerDecleration = _OptimizerDeclarationDict()
 
 class Optimizer:
     '''
@@ -357,8 +373,13 @@ def REGISTER_OPTIMIZER(optimizer : Optimizer, call_name : str):
         >>>    type     : str
         
     """
-    __optimizerDecleration.update({call_name.lower() : optimizer})
-
+    if isinstance(optimizer(), Optimizer):
+        __optimizerDecleration.update({call_name.lower() : optimizer})
+    else:
+        msg = f"The Optimizer `{optimizer}` is not same as gNet's Optimizer base class. " 
+        msg += f"\nPlease make sure that `{optimizer}` inherit from gNet.optimizer.Optimizer"
+        raise TypeError(msg)
+    
 
 REGISTER_OPTIMIZER(SGD, 'sgd')
 REGISTER_OPTIMIZER(Adagrad, 'adagrad')
